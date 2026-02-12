@@ -3,6 +3,14 @@ import type { CookieProduct, SizeOption } from "../types";
 // Store WhatsApp number (with country code, no + or 0). Replace with your business number.
 export const STORE_WHATSAPP_NUMBER = "6285659763336";
 
+// Google Sheet ID for order storage. Get from the sheet URL: .../d/SHEET_ID/edit
+// Option 1: Set NEXT_PUBLIC_GOOGLE_SHEET_ID in .env.local
+// Option 2: Replace the empty string below with your Sheet ID
+export const GOOGLE_SHEET_ID =
+  (typeof process !== "undefined" &&
+    process.env?.NEXT_PUBLIC_GOOGLE_SHEET_ID) ||
+  "";
+
 export function buildWhatsAppOrderMessage(order: {
   orderId: string;
   orderDate: string;
@@ -31,6 +39,28 @@ export function buildWhatsAppOrderMessage(order: {
   );
   msg += `\n*Total: Rp ${order.total.toLocaleString("id-ID")}*`;
   return msg;
+}
+
+export function buildSheetRow(order: {
+  orderId: string;
+  orderDate: string;
+  customer: { name: string; whatsapp: string; address: string; note: string };
+  orderType: string;
+  items: { name: string; size: string; quantity: number; subtotal: number }[];
+  total: number;
+}): Record<string, string | number | any> {
+  const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
+  return {
+    "Order ID": order.orderId,
+    "Order Date": order.orderDate,
+    "Customer Name": order.customer.name,
+    WhatsApp: order.customer.whatsapp,
+    Address: order.customer.address,
+    Note: order.customer.note || "",
+    "Order Type": typeLabel,
+    Items: order.items,
+    Total: order.total,
+  };
 }
 
 export const SIZE_OPTIONS: SizeOption[] = ["400ml", "600ml", "800ml"];

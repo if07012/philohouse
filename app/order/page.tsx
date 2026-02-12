@@ -11,7 +11,9 @@ import type { OrderState, OrderItem, SizeOption, CookieProduct } from "./types";
 import {
   COOKIE_PRODUCTS,
   STORE_WHATSAPP_NUMBER,
+  GOOGLE_SHEET_ID,
   buildWhatsAppOrderMessage,
+  buildSheetRow,
 } from "./data/cookies";
 
 function formatDate(date: Date): string {
@@ -55,6 +57,8 @@ export default function OrderFormPage() {
   }));
 
   const [errors, setErrors] = useState<Partial<Record<"name" | "whatsapp" | "address"| "note", string>>>({});
+  const [cookieSearch, setCookieSearch] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateTotal = useCallback((items: OrderItem[]) => {
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -149,17 +153,12 @@ export default function OrderFormPage() {
     return true;
   }, [orderState.customer, orderState.items.length]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    setIsSubmitting(true);
     const total = orderState.items.reduce((s, i) => s + i.subtotal, 0);
-    const payload = {
-      ...orderState,
-      total,
-    };
-    console.log("Order submitted:", payload);
-
-    const message = buildWhatsAppOrderMessage({
+    const orderData = {
       orderId: orderState.orderId,
       orderDate: orderState.orderDate,
       customer: orderState.customer,
@@ -171,7 +170,34 @@ export default function OrderFormPage() {
         subtotal: i.subtotal,
       })),
       total,
-    });
+    };
+
+    try {
+      if (GOOGLE_SHEET_ID) {
+        const sheetRow = buildSheetRow(orderData);
+        const res = await fetch("/api/sheets/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            spreadsheetId: GOOGLE_SHEET_ID,
+            data: [sheetRow],
+            sheetIndex: 0,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error("Google Sheet write failed:", err);
+          alert("Order saved to WhatsApp, but failed to save to Google Sheet.");
+        }
+      }
+    } catch (err) {
+      console.error("Error saving to Google Sheet:", err);
+      alert("Order saved to WhatsApp, but failed to save to Google Sheet.");
+    } finally {
+      setIsSubmitting(false);
+    }
+
+    const message = buildWhatsAppOrderMessage(orderData);
     const whatsappUrl = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
@@ -216,8 +242,30 @@ export default function OrderFormPage() {
             <p className="mb-4 text-xs text-gray-600 sm:text-sm">
               Tap &quot;Add to Order&quot; to add cookies to your cart
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-              {COOKIE_PRODUCTS.map((product) => (
+            <div className="mb-4">
+              <label htmlFor="cookie-search" className="sr-only">
+                Search cookies
+              </label>
+              <input
+                id="cookie-search"
+                type="search"
+                value={cookieSearch}
+                onChange={(e) => setCookieSearch(e.target.value)}
+                placeholder="Search cookies..."
+                autoComplete="off"
+                className="w-full min-h-[44px] rounded-lg border border-gray-300 px-4 py-2.5 text-base placeholder-gray-400 focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
+              />
+            </div>
+            {(() => {
+              const query = cookieSearch.trim().toLowerCase();
+              const filteredProducts = query
+                ? COOKIE_PRODUCTS.filter((p) =>
+                    p.name.toLowerCase().includes(query)
+                  )
+                : COOKIE_PRODUCTS;
+              return filteredProducts.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                  {filteredProducts.map((product) => (
                 <div
                   key={product.id}
                   className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
@@ -248,8 +296,14 @@ export default function OrderFormPage() {
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-gray-500">
+                  No cookies found for &quot;{cookieSearch}&quot;
+                </p>
+              );
+            })()}
           </section>
 
           {/* Step 3: Your order */}
@@ -294,9 +348,10 @@ export default function OrderFormPage() {
             />
             <button
               type="submit"
-              className="min-h-[48px] w-full rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg active:scale-[0.99] sm:text-lg lg:w-auto lg:min-w-[200px]"
+              disabled={isSubmitting}
+              className="min-h-[48px] w-full rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 sm:text-lg lg:w-auto lg:min-w-[200px]"
             >
-              Submit Order
+              {isSubmitting ? "Saving..." : "Submit Order"}
             </button>
           </section>
         </form>
