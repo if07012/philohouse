@@ -3,28 +3,44 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: #F7FAF8; /* calm cream */
+  --color-fg: #334E58; /* muted navy */
+  --color-accent: #5B9EA0; /* calm teal */
+  --color-soft: #F6E7D7; /* soft sand */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-primary-pink: #ef476f;
-  --color-dark-blue: #26547c;
-  --color-accent-yellow: #ffd166;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-bg: #071215;
+    --color-fg: #dbecee;
   }
 }
 
 body {
+
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-fade-in { animation: fade-in 0.7s ease-out; }
+.animate-float { animation: float 4s ease-in-out infinite; }
+
+/* Utility for subtle card look */
+.card-soft {
   background: white;
-  font-family: Arial, Helvetica, sans-serif;
+  box-shadow: var(--tw-ring-offset-shadow, 0 8px 24px rgba(51,78,88,0.06));
+  border-radius: 1rem;
 }
