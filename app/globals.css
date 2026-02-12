@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
@@ -10,6 +12,9 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-primary-pink: #ef476f;
+  --color-dark-blue: #26547c;
+  --color-accent-yellow: #ffd166;
 }
 
 @media (prefers-color-scheme: dark) {
