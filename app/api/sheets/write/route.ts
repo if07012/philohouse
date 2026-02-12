@@ -3,7 +3,7 @@ import { appendSheetData } from '../../../../app/lib/googleSheets';
 
 export async function POST(request: Request) {
   try {
-    const { spreadsheetId, data, sheetIndex } = await request.json();
+    const { spreadsheetId, data, sheetIndex, sheetName } = await request.json();
 
     if (!spreadsheetId || !data) {
       return NextResponse.json(
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const result = await appendSheetData(
       spreadsheetId,
       data,
-      sheetIndex || 0
+      sheetName ?? (sheetIndex !== undefined ? sheetIndex : 0)
     );
 
     return NextResponse.json(result);

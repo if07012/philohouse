@@ -40,11 +40,21 @@ export async function readSheetData(spreadsheetId: string, sheetName?: string) {
 export async function appendSheetData(
   spreadsheetId: string,
   data: Record<string, any>[],
-  sheetName?: string
+  sheetNameOrIndex?: string | number
 ) {
   try {
     const doc = await getGoogleSheet(spreadsheetId);
-    const sheet = sheetName ? doc.sheetsByTitle[sheetName] : doc.sheetsByIndex[0];
+    let sheet;
+    if (typeof sheetNameOrIndex === 'string') {
+      sheet = doc.sheetsByTitle[sheetNameOrIndex];
+      if (!sheet && data.length > 0) {
+        const headers = Object.keys(data[0]);
+        sheet = await doc.addSheet({ title: sheetNameOrIndex, headerValues: headers });
+      }
+    } else {
+      sheet = doc.sheetsByIndex[sheetNameOrIndex ?? 0];
+    }
+    if (!sheet) throw new Error('Sheet not found');
     await sheet.addRows(data);
     return { success: true, message: 'Data added successfully' };
   } catch (error) {

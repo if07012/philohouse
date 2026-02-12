@@ -14,6 +14,7 @@ import {
   GOOGLE_SHEET_ID,
   buildWhatsAppOrderMessage,
   buildSheetRow,
+  buildCookieDetailRows,
 } from "./data/cookies";
 
 function formatDate(date: Date): string {
@@ -175,19 +176,38 @@ export default function OrderFormPage() {
     try {
       if (GOOGLE_SHEET_ID) {
         const sheetRow = buildSheetRow(orderData);
-        const res = await fetch("/api/sheets/write", {
+        const ordersRes = await fetch("/api/sheets/write", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             spreadsheetId: GOOGLE_SHEET_ID,
             data: [sheetRow],
-            sheetIndex: 0,
+            sheetName: "Orders",
           }),
         });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          console.error("Google Sheet write failed:", err);
+        if (!ordersRes.ok) {
+          const err = await ordersRes.json().catch(() => ({}));
+          console.error("Google Sheet (Orders) write failed:", err);
           alert("Order saved to WhatsApp, but failed to save to Google Sheet.");
+        } else {
+          const cookieRows = buildCookieDetailRows({
+            orderId: orderData.orderId,
+            customer: { name: orderData.customer.name },
+            items: orderData.items,
+          });
+          const detailsRes = await fetch("/api/sheets/write", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              spreadsheetId: GOOGLE_SHEET_ID,
+              data: cookieRows,
+              sheetName: "Cookie Details",
+            }),
+          });
+          if (!detailsRes.ok) {
+            const err = await detailsRes.json().catch(() => ({}));
+            console.error("Google Sheet (Cookie Details) write failed:", err);
+          }
         }
       }
     } catch (err) {

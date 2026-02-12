@@ -48,8 +48,14 @@ export function buildSheetRow(order: {
   orderType: string;
   items: { name: string; size: string; quantity: number; subtotal: number }[];
   total: number;
-}): Record<string, string | number | any> {
+}): Record<string, string | number> {
   const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
+  const itemsStr = order.items
+    .map(
+      (i) =>
+        `${i.name} ${i.size} x ${i.quantity} = Rp ${i.subtotal.toLocaleString("id-ID")}`
+    )
+    .join(" | ");
   return {
     "Order ID": order.orderId,
     "Order Date": order.orderDate,
@@ -58,9 +64,25 @@ export function buildSheetRow(order: {
     Address: order.customer.address,
     Note: order.customer.note || "",
     "Order Type": typeLabel,
-    Items: order.items,
+    Items: itemsStr,
     Total: order.total,
   };
+}
+
+/** One row per cookie item for the "Cookie Details" sheet */
+export function buildCookieDetailRows(order: {
+  orderId: string;
+  customer: { name: string };
+  items: { name: string; size: string; quantity: number; subtotal: number }[];
+}): Record<string, string | number>[] {
+  return order.items.map((item) => ({
+    "Order ID": order.orderId,
+    "Customer Name": order.customer.name,
+    "Cookie Name": item.name,
+    Size: item.size,
+    Quantity: item.quantity,
+    Subtotal: item.subtotal,
+  }));
 }
 
 export const SIZE_OPTIONS: SizeOption[] = ["400ml", "600ml", "800ml"];
