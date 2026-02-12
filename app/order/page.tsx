@@ -54,7 +54,7 @@ export default function OrderFormPage() {
     total: 0,
   }));
 
-  const [errors, setErrors] = useState<Partial<Record<"name" | "whatsapp" | "address", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<"name" | "whatsapp" | "address"| "note", string>>>({});
 
   const updateTotal = useCallback((items: OrderItem[]) => {
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
