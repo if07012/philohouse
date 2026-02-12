@@ -7,7 +7,8 @@ const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive.file',
 ];
-
+console.error(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL)
+console.error(process.env.GOOGLE_PRIVATE_KEY)
 const jwt = new JWT({
   email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
   key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),

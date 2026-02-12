@@ -12,10 +12,14 @@ import {
   COOKIE_PRODUCTS,
   STORE_WHATSAPP_NUMBER,
   GOOGLE_SHEET_ID,
+  getSpinChances,
+  SPIN_PRIZES,
   buildWhatsAppOrderMessage,
   buildSheetRow,
   buildCookieDetailRows,
+  buildSpinResultRow,
 } from "./data/cookies";
+import SpinWheel from "./components/SpinWheel";
 
 function formatDate(date: Date): string {
   const d = date.getDate().toString().padStart(2, "0");
@@ -57,9 +61,15 @@ export default function OrderFormPage() {
     total: 0,
   }));
 
-  const [errors, setErrors] = useState<Partial<Record<"name" | "whatsapp" | "address"| "note", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<"name" | "whatsapp" | "address" | "note", string>>>({});
   const [cookieSearch, setCookieSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSpinWheel, setShowSpinWheel] = useState(false);
+  const [spinsRemaining, setSpinsRemaining] = useState(0);
+  const [spinOrderInfo, setSpinOrderInfo] = useState<{
+    orderId: string;
+    customerName: string;
+  } | null>(null);
 
   const updateTotal = useCallback((items: OrderItem[]) => {
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -84,11 +94,11 @@ export default function OrderFormPage() {
       const newItems = orderState.items.map((item) =>
         item.id === itemId
           ? {
-              ...item,
-              size,
-              price: product.sizePrices[size],
-              subtotal: product.sizePrices[size] * item.quantity,
-            }
+            ...item,
+            size,
+            price: product.sizePrices[size],
+            subtotal: product.sizePrices[size] * item.quantity,
+          }
           : item
       );
       updateTotal(newItems);
@@ -102,10 +112,10 @@ export default function OrderFormPage() {
       const newItems = orderState.items.map((item) =>
         item.id === itemId
           ? {
-              ...item,
-              quantity: clampedQty,
-              subtotal: item.price * clampedQty,
-            }
+            ...item,
+            quantity: clampedQty,
+            subtotal: item.price * clampedQty,
+          }
           : item
       );
       updateTotal(newItems);
@@ -173,6 +183,16 @@ export default function OrderFormPage() {
       total,
     };
 
+    const chances = getSpinChances(total);
+    if (chances >= 1) {
+      setSpinsRemaining(chances);
+      setSpinOrderInfo({
+        orderId: orderData.orderId,
+        customerName: orderData.customer.name,
+      });
+      setShowSpinWheel(true);
+    }
+
     try {
       if (GOOGLE_SHEET_ID) {
         const sheetRow = buildSheetRow(orderData);
@@ -217,9 +237,8 @@ export default function OrderFormPage() {
       setIsSubmitting(false);
     }
 
-    const message = buildWhatsAppOrderMessage(orderData);
-    const whatsappUrl = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+
+
   };
 
   return (
@@ -280,42 +299,42 @@ export default function OrderFormPage() {
               const query = cookieSearch.trim().toLowerCase();
               const filteredProducts = query
                 ? COOKIE_PRODUCTS.filter((p) =>
-                    p.name.toLowerCase().includes(query)
-                  )
+                  p.name.toLowerCase().includes(query)
+                )
                 : COOKIE_PRODUCTS;
               return filteredProducts.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
-                >
-                  <div className="relative aspect-square w-full bg-gray-100">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      unoptimized
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col p-2.5 sm:p-3">
-                    <h3 className="line-clamp-2 text-sm font-medium text-dark-blue sm:text-base">
-                      {product.name}
-                    </h3>
-                    <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-                      From Rp {product.basePrice.toLocaleString("id-ID")}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => addItem(product)}
-                      className="mt-2 min-h-[44px] w-full rounded-lg bg-primary-pink px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-pink/90 active:scale-[0.98] sm:mt-3"
+                    <div
+                      key={product.id}
+                      className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
                     >
-                      Add to Order
-                    </button>
-                  </div>
-                </div>
+                      <div className="relative aspect-square w-full bg-gray-100">
+                        <Image
+                          src={product.image}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="flex flex-1 flex-col p-2.5 sm:p-3">
+                        <h3 className="line-clamp-2 text-sm font-medium text-dark-blue sm:text-base">
+                          {product.name}
+                        </h3>
+                        <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                          From Rp {product.basePrice.toLocaleString("id-ID")}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => addItem(product)}
+                          className="mt-2 min-h-[44px] w-full rounded-lg bg-primary-pink px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-pink/90 active:scale-[0.98] sm:mt-3"
+                        >
+                          Add to Order
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -377,6 +396,39 @@ export default function OrderFormPage() {
         </form>
       </div>
 
+      {showSpinWheel && spinOrderInfo && (
+        <SpinWheel
+          prizes={SPIN_PRIZES}
+          spinsRemaining={spinsRemaining}
+          onSpinComplete={async (prize) => {
+            setSpinsRemaining((prev) => prev - 1);
+            if (GOOGLE_SHEET_ID && prize.label !== "Try Again") {
+              try {
+                const row = buildSpinResultRow({
+                  orderId: spinOrderInfo.orderId,
+                  customerName: spinOrderInfo.customerName,
+                  gift: prize.label,
+                });
+                await fetch("/api/sheets/write", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    spreadsheetId: GOOGLE_SHEET_ID,
+                    data: [row],
+                    sheetName: "Spin Rewards",
+                  }),
+                });
+              } catch (err) {
+                console.error("Failed to save spin reward:", err);
+              }
+            }
+          }}
+          onClose={() => {
+            setShowSpinWheel(false);
+            setSpinOrderInfo(null);
+          }}
+        />
+      )}
     </div>
   );
 }

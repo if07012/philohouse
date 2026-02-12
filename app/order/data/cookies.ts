@@ -85,6 +85,44 @@ export function buildCookieDetailRows(order: {
   }));
 }
 
+/** Spin wheel: every Rp 500,000 = 1 spin chance */
+export const SPIN_THRESHOLD = 100_000;
+
+export function getSpinChances(total: number): number {
+  return Math.floor(total / SPIN_THRESHOLD);
+}
+
+export interface SpinPrize {
+  id: string;
+  label: string;
+  type: "discount" | "cookie";
+  value?: string; // e.g. "10%", "Chocolate Chip 400ml"
+}
+
+/** Row for "Spin Rewards" sheet */
+export function buildSpinResultRow(data: {
+  orderId: string;
+  customerName: string;
+  gift: string;
+}): Record<string, string> {
+  return {
+    "Order ID": data.orderId,
+    "Customer Name": data.customerName,
+    Gift: data.gift,
+  };
+}
+
+export const SPIN_PRIZES: SpinPrize[] = [
+  { id: "d10", label: "10% Off", type: "discount", value: "10%" },
+  { id: "d5", label: "5% Off", type: "discount", value: "5%" },
+  { id: "cookie1", label: "Free Cookie 400ml", type: "cookie", value: "Any 400ml" },
+  { id: "d15", label: "15% Off", type: "discount", value: "15%" },
+  { id: "try", label: "Try Again", type: "discount" },
+  { id: "cookie2", label: "Free Oatmeal Cookie", type: "cookie", value: "Oatmeal 400ml" },
+  { id: "d20", label: "20% Off", type: "discount", value: "20%" },
+  { id: "cookie3", label: "Free Choc Chip", type: "cookie", value: "Choc Chip 400ml" },
+];
+
 export const SIZE_OPTIONS: SizeOption[] = ["400ml", "600ml", "800ml"];
 
 // Size price multipliers: 400ml = 1x, 600ml = 1.5x, 800ml = 2x

@@ -1,5 +1,7 @@
 "use client";
 
+import { getSpinChances, SPIN_THRESHOLD } from "../data/cookies";
+
 interface OrderSummaryProps {
   total: number;
   itemCount: number;
@@ -7,6 +9,7 @@ interface OrderSummaryProps {
 
 export default function OrderSummary({ total, itemCount }: OrderSummaryProps) {
   const formattedTotal = total.toLocaleString("id-ID");
+  const spins = getSpinChances(total);
   return (
     <div className="w-full rounded-xl bg-dark-blue p-4 text-white shadow-md sm:p-5 sm:min-w-[280px]">
       <h2 className="mb-4 text-base font-semibold sm:text-lg">Order Summary</h2>
@@ -21,6 +24,11 @@ export default function OrderSummary({ total, itemCount }: OrderSummaryProps) {
             Rp {formattedTotal}
           </span>
         </div>
+        <p className="text-xs text-white/70">
+          {spins >= 1
+            ? `🎉 ${spins} spin${spins !== 1 ? "s" : ""} after order!`
+            : `Add Rp ${(SPIN_THRESHOLD - (total % SPIN_THRESHOLD)).toLocaleString("id-ID")} more for 1 spin`}
+        </p>
       </div>
     </div>
   );
