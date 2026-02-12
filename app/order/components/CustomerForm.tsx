@@ -4,6 +4,7 @@ export interface CustomerData {
   name: string;
   whatsapp: string;
   address: string;
+  note?: string;
 }
 
 interface CustomerFormProps {
