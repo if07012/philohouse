@@ -136,7 +136,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "choc-chip",
     name: "Chocolate Chip Cookies",
-    image: "https://placehold.co/200x200/ef476f/fff?text=Choc+Chip",
+    image: "/cookies/choco-chip.jpg",
     basePrice: 50000,
     sizePrices: {
       "400ml": 50000,
@@ -147,7 +147,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "oatmeal-raisin",
     name: "Oatmeal Raisin Cookies",
-    image: "https://placehold.co/200x200/26547c/fff?text=Oatmeal",
+    image: "/cookies/oatmeal-raisin.png",
     basePrice: 45000,
     sizePrices: {
       "400ml": 45000,
@@ -158,7 +158,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "butter-scotch",
     name: "Butter Scotch Cookies",
-    image: "https://placehold.co/200x200/ffd166/333?text=Butter",
+    image: "/cookies/butter-scotch.jpg",
     basePrice: 55000,
     sizePrices: {
       "400ml": 55000,
@@ -169,7 +169,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "peanut-butter",
     name: "Peanut Butter Cookies",
-    image: "https://placehold.co/200x200/ef476f/fff?text=Peanut",
+    image: "/cookies/peanut-butter.jpg",
     basePrice: 48000,
     sizePrices: {
       "400ml": 48000,

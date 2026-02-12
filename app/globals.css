@@ -3,12 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #F7FAF8; /* calm cream */
-  --color-fg: #334E58; /* muted navy */
-  --color-accent: #5B9EA0; /* calm teal */
-  --color-soft: #F6E7D7; /* soft sand */
+  --color-bg: #F7FAF8;
+  /* calm cream */
+  --color-fg: #334E58;
+  /* muted navy */
+  --color-accent: #5B9EA0;
+  /* calm teal */
+  --color-soft: #F6E7D7;
+  /* soft sand */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-primary-pink: #ef476f;
+  --color-dark-blue: #26547c;
+  --color-accent-yellow: #ffd166;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,28 +26,62 @@
 }
 
 body {
-
+  color: black;
   font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
-.animate-fade-in { animation: fade-in 0.7s ease-out; }
-.animate-float { animation: float 4s ease-in-out infinite; }
+.animate-fade-in {
+  animation: fade-in 0.7s ease-out;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
 
 /* Utility for subtle card look */
 .card-soft {
   background: white;
-  box-shadow: var(--tw-ring-offset-shadow, 0 8px 24px rgba(51,78,88,0.06));
+  box-shadow: var(--tw-ring-offset-shadow, 0 8px 24px rgba(51, 78, 88, 0.06));
   border-radius: 1rem;
+}
+.bg-primary-pink{
+  background-color: var(--color-primary-pink);
+}
+.bg-dark-blue{
+  background-color: var(--color-dark-blue);
+}
+.bg-accent-yellow{
+  background-color: var(--color-accent-yellow);
+}
+.bg-calm-teal{
+  background-color: var(--color-calm-teal);
+}
+.bg-soft-sand{
+  background-color: var(--color-soft-sand);
 }

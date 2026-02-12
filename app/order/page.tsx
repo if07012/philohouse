@@ -279,7 +279,7 @@ export default function OrderFormPage() {
               Add Cookies
             </h2>
             <p className="mb-4 text-xs text-gray-600 sm:text-sm">
-              Tap &quot;Add to Order&quot; to add cookies to your cart
+              Tap &quot;Add to Order&quot; to add cookies to your cart. <b>You can add the same cookie more than once with different sizes.</b>
             </p>
             <div className="mb-4">
               <label htmlFor="cookie-search" className="sr-only">
