@@ -114,6 +114,7 @@ export default function EditOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<{ src: string; alt: string } | null>(null);
 
   useEffect(() => {
     async function loadOrder() {
@@ -420,15 +421,36 @@ export default function EditOrderPage() {
                       key={product.id}
                       className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
                     >
-                      <div className="relative aspect-square w-full bg-gray-100">
+                      <div className="relative aspect-square w-full bg-gray-100 group cursor-pointer">
                         <Image
                           src={product.image}
                           alt={product.name}
                           fill
-                          className="object-cover"
+                          className="object-cover transition-transform group-hover:scale-105"
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           unoptimized
+                          onClick={() => setFullscreenImage({ src: product.image, alt: product.name })}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setFullscreenImage({ src: product.image, alt: product.name })}
+                          className="absolute top-2 right-2 min-h-[32px] min-w-[32px] rounded-full bg-black/50 backdrop-blur-sm p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/70 active:scale-95"
+                          aria-label="View fullscreen"
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"
+                            />
+                          </svg>
+                        </button>
                       </div>
                       <div className="flex flex-1 flex-col p-2.5 sm:p-3">
                         <h3 className="line-clamp-2 text-sm font-medium text-dark-blue sm:text-base">
@@ -504,6 +526,49 @@ export default function EditOrderPage() {
             </button>
           </section>
         </form>
+
+        {/* Fullscreen Image Modal */}
+        {fullscreenImage && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+            onClick={() => setFullscreenImage(null)}
+          >
+            <button
+              type="button"
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-4 right-4 min-h-[44px] min-w-[44px] rounded-full bg-white/10 backdrop-blur-sm p-2 text-white transition-colors hover:bg-white/20 active:scale-95"
+              aria-label="Close"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <div
+              className="relative h-full w-full max-h-[90vh] max-w-[90vw]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src={fullscreenImage.src}
+                alt={fullscreenImage.alt}
+                fill
+                className="object-contain"
+                sizes="90vw"
+                unoptimized
+                priority
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
