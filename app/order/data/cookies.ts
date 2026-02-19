@@ -156,9 +156,9 @@ export const SIZE_MULTIPLIERS: Record<SizeOption, number> = {
 
 export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
-    id: "choc-chip",
-    name: "Chocolate Chip Cookies",
-    image: "/cookies/choco-chip.jpg",
+    id: "matcha-almond",
+    name: "Matcha Almond Cookies",
+    image: "/cookies/almond.jpg",
     basePrice: 50000,
     sizePrices: {
       "400ml": 50000,
@@ -167,9 +167,9 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
     },
   },
   {
-    id: "oatmeal-raisin",
-    name: "Oatmeal Raisin Cookies",
-    image: "/cookies/oatmeal-raisin.png",
+    id: "putri-salju-coklat",
+    name: "Putri Salju Coklat Cookies",
+    image: "/cookies/putri-salju-coklat.jpg",
     basePrice: 45000,
     sizePrices: {
       "400ml": 45000,
@@ -178,9 +178,9 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
     },
   },
   {
-    id: "butter-scotch",
-    name: "Butter Scotch Cookies",
-    image: "/cookies/butter-scotch.jpg",
+    id: "chocolate-pistachio",
+    name: "Chocolate Pistachio Cookies",
+    image: "/cookies/coklat-pistacio.jpeg",
     basePrice: 55000,
     sizePrices: {
       "400ml": 55000,
@@ -191,7 +191,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "peanut-butter",
     name: "Peanut Butter Cookies",
-    image: "/cookies/peanut-butter.jpg",
+    image: "/cookies/kue-kacang.jpeg",
     basePrice: 48000,
     sizePrices: {
       "400ml": 48000,
