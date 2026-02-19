@@ -3,6 +3,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+const OrderButton = () => {
+  return (
+    <div className="flex items-center gap-4">
+      <Link href="/order">
+        <button className="px-6 py-3 bg-[#4a8c88] text-white rounded-xl text-lg font-semibold hover:bg-[#4a8c88] transition">
+          Order Now — Fresh Today
+        </button>
+      </Link>
+    </div>
+  );
+};
+
 export default function Home() {
   return (
     <main className="relative bg-calm-cream min-h-screen overflow-hidden">
@@ -19,13 +31,7 @@ export default function Home() {
             Whether it's a thoughtful gift or a daily treat, our cookies turn ordinary moments into delightful memories.
           </p>
 
-          <div className="flex items-center gap-4">
-            <Link href="/order">
-              <button className="px-6 py-3 bg-[#4a8c88] text-white rounded-xl text-lg font-semibold hover:bg-[#4a8c88] transition">
-                Order Now — Fresh Today
-              </button>
-            </Link>
-          </div>
+          {false && <OrderButton />}
         </div>
 
       </section>

@@ -420,9 +420,6 @@ export default function OrdersListPage() {
                         className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200"
                       >
                         <div className="flex-1 flex items-center gap-4">
-                          <span className="font-semibold text-dark-blue min-w-[200px]">
-                            {group.cookieName}
-                          </span>
                           <span className="text-gray-600 min-w-[100px]">
                             {item.quantity} item{item.quantity !== 1 ? "s" : ""}
                           </span>
