@@ -14,7 +14,7 @@ export interface CookieProduct {
   name: string;
   image: string;
   basePrice: number;
-  sizePrices: Record<SizeOption, number>;
+  sizePrices: Record<string, number>;
 }
 
 export interface OrderItem {
