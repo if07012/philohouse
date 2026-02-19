@@ -81,7 +81,7 @@ export default function SpinWheel({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+      <div className="relative w-full sm:w-96 rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 text-center">
           <h3 className="text-xl font-bold text-dark-blue">
             Spin to Win
@@ -91,7 +91,7 @@ export default function SpinWheel({
           </p>
         </div>
 
-        <div className="relative mx-auto aspect-square w-64 sm:w-72">
+        <div className="relative mx-auto aspect-square w-64 sm:w-96">
           <div
             className="absolute inset-0 z-10 flex items-start justify-center"
             style={{ transform: "translateY(-8px)" }}
@@ -127,8 +127,11 @@ export default function SpinWheel({
                       transform: "translate(-50%, -50%)",
                       whiteSpace: "nowrap",
                     }}
+                    dangerouslySetInnerHTML={{
+                      __html: prize.label
+                    }}
                   >
-                    {prize.label}
+
                   </span>
                 );
               })}
@@ -145,9 +148,9 @@ export default function SpinWheel({
               <p className="text-sm font-medium text-gray-600">
                 Congratulations! You won:
               </p>
-              <p className="mt-1 text-lg font-bold text-dark-blue">
-                {wonPrize.label}
-              </p>
+              <div className="mt-1 text-lg font-bold text-dark-blue" dangerouslySetInnerHTML={{ __html: wonPrize.label }}>
+
+              </div>
             </div>
             {spinsRemaining > 0 ? (
               <button
