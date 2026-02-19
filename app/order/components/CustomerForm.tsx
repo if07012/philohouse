@@ -33,7 +33,7 @@ export default function CustomerForm({
   return (
     <div className="rounded-xl bg-white p-4 shadow-md sm:p-5">
       <h2 className="mb-4 text-base font-semibold text-dark-blue sm:text-lg">
-        Customer Information
+        Informasi Pelanggan
       </h2>
       <div className="space-y-4">
         <div>
@@ -41,14 +41,14 @@ export default function CustomerForm({
             htmlFor="customer-name"
             className="block text-sm font-medium text-gray-600"
           >
-            Name <span className="text-primary-pink">*</span>
+            Nama <span className="text-primary-pink">*</span>
           </label>
           <input
             id="customer-name"
             type="text"
             value={customer.name}
             onChange={(e) => onChange("name", e.target.value)}
-            placeholder="Your full name"
+            placeholder="Nama lengkap Anda"
             autoComplete="name"
             className={`mt-1 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${
               errors.name ? "border-red-500" : "border-gray-300"
@@ -63,7 +63,7 @@ export default function CustomerForm({
             htmlFor="customer-whatsapp"
             className="block text-sm font-medium text-gray-600"
           >
-            WhatsApp Number <span className="text-primary-pink">*</span>
+            Nomor WhatsApp <span className="text-primary-pink">*</span>
           </label>
           <input
             id="customer-whatsapp"
@@ -72,7 +72,7 @@ export default function CustomerForm({
             value={customer.whatsapp}
             onChange={(e) => onChange("whatsapp", e.target.value)}
             onBlur={handleWhatsAppBlur}
-            placeholder="08xxxxxxxxxx or +628xxxxxxxxxx"
+            placeholder="08xxxxxxxxxx atau +628xxxxxxxxxx"
             autoComplete="tel"
             className={`mt-1 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${
               errors.whatsapp ? "border-red-500" : "border-gray-300"
@@ -87,13 +87,13 @@ export default function CustomerForm({
             htmlFor="customer-address"
             className="block text-sm font-medium text-gray-600"
           >
-            Shipping Address <span className="text-primary-pink">*</span>
+            Alamat Pengiriman <span className="text-primary-pink">*</span>
           </label>
           <textarea
             id="customer-address"
             value={customer.address}
             onChange={(e) => onChange("address", e.target.value)}
-            placeholder="Full shipping address"
+            placeholder="Alamat pengiriman lengkap"
             rows={3}
             autoComplete="street-address"
             className={`mt-1 min-h-[88px] w-full resize-none rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${
@@ -109,13 +109,13 @@ export default function CustomerForm({
             htmlFor="customer-note"
             className="block text-sm font-medium text-gray-600"
           >
-            Note
+            Catatan
           </label>
           <textarea
             id="customer-note"
             value={customer.note}
             onChange={(e) => onChange("note", e.target.value)}
-            placeholder="Special requests, delivery instructions, or other notes (optional)"
+            placeholder="Permintaan khusus, instruksi pengiriman, atau catatan lainnya (opsional)"
             rows={2}
             className="mt-1 min-h-[64px] w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
           />

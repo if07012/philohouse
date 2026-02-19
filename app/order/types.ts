@@ -1,6 +1,6 @@
 export type OrderTypeOption = "single" | "hampers";
 
-export type SizeOption = "400ml" | "600ml" | "800ml";
+export type SizeOption = "400ml" | "600ml" | "800ml" | "Satuan";
 
 export interface CustomerData {
   name: string;

@@ -39,7 +39,10 @@ function createOrderItem(
   size: SizeOption,
   quantity: number
 ): OrderItem {
-  const price = product.sizePrices[size];
+  let price = product.sizePrices[size];
+  if(!price)
+    price = product.sizePrices["Satuan"]
+  debugger
   const subtotal = price * quantity;
   return {
     id: `${product.id}-${size}-${Date.now()}`,
@@ -322,21 +325,21 @@ export default function OrderFormPage() {
             {/* Step 2: Add cookies - scrollable on mobile */}
             <section className="rounded-xl bg-white p-4 shadow-md sm:p-5">
               <h2 className="mb-2 text-base font-semibold text-dark-blue sm:text-lg">
-                Add Cookies
+                Tambah Kue
               </h2>
               <p className="mb-4 text-xs text-gray-600 sm:text-sm">
-                Tap &quot;Add to Order&quot; to add cookies to your cart. <b>You can add the same cookie more than once with different sizes.</b>
+                Tap &quot;Tambahkan ke Pesanan&quot; untuk menambahkan kue ke pesanan Anda. <b>Anda dapat menambahkan kue yang sama lebih dari satu kali dengan ukuran yang berbeda.</b>
               </p>
               <div className="mb-4">
                 <label htmlFor="cookie-search" className="sr-only">
-                  Search cookies
+                  Cari kue
                 </label>
                 <input
                   id="cookie-search"
                   type="search"
                   value={cookieSearch}
                   onChange={(e) => setCookieSearch(e.target.value)}
-                  placeholder="Search cookies..."
+                  placeholder="Cari kue..."
                   autoComplete="off"
                   className="w-full min-h-[44px] rounded-lg border border-gray-300 px-4 py-2.5 text-base placeholder-gray-400 focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
                 />
@@ -391,14 +394,14 @@ export default function OrderFormPage() {
                             {product.name}
                           </h3>
                           <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-                            From Rp {product.basePrice.toLocaleString("id-ID")}
+                            Dari Rp {product.basePrice.toLocaleString("id-ID")}
                           </p>
                           <button
                             type="button"
                             onClick={() => addItem(product)}
                             className="mt-2 min-h-[44px] w-full rounded-lg bg-primary-pink px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-pink/90 active:scale-[0.98] sm:mt-3"
                           >
-                            Add to Order
+                            Tambahkan ke Pesanan
                           </button>
                         </div>
                       </div>
@@ -440,8 +443,8 @@ export default function OrderFormPage() {
             ) : (
               <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-8 text-center">
                 <p className="text-sm text-gray-500 sm:text-base">
-                  No cookies added yet. Tap &quot;Add to Order&quot; above to get
-                  started.
+                Tidak ada kue yang ditambahkan. Tap &quot;Tambahkan ke Pesanan&quot; di atas untuk memulai.
+                
                 </p>
               </div>
             )}
@@ -457,7 +460,7 @@ export default function OrderFormPage() {
                 disabled={isSubmitting}
                 className="min-h-[48px] w-full rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 sm:text-lg lg:w-auto lg:min-w-[200px]"
               >
-                {isSubmitting ? "Saving..." : "Submit Order"}
+                {isSubmitting ? "Saving..." : "Simpan"}
               </button>
             </section>
           </form>

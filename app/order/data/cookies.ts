@@ -145,13 +145,14 @@ export const SPIN_PRIZES: SpinPrize[] = [
   { id: "cookie3", label: "Free Choc Chip", type: "cookie", value: "Choc Chip 400ml" },
 ];
 
-export const SIZE_OPTIONS: SizeOption[] = ["400ml", "600ml", "800ml"];
+export const SIZE_OPTIONS: SizeOption[] = ["400ml", "600ml", "800ml", "Satuan"];
 
 // Size price multipliers: 400ml = 1x, 600ml = 1.5x, 800ml = 2x
 export const SIZE_MULTIPLIERS: Record<SizeOption, number> = {
   "400ml": 1,
   "600ml": 1.5,
   "800ml": 2,
+  "Satuan": 1
 };
 
 export const COOKIE_PRODUCTS: CookieProduct[] = [
@@ -315,6 +316,52 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
       "400ml": 65000,
       "600ml": 85000,
       "800ml": 110000,
+    },
+  },
+
+  {
+    id: "hampers1",
+    name: "Hampers 1",
+    image: "/cookies/hampers1.jpeg",
+    basePrice: 6000,
+    sizePrices: {
+      "Satuan": 6000
+    },
+  },
+  {
+    id: "hampers2",
+    name: "Hampers 2",
+    image: "/cookies/hampers2.jpeg",
+    basePrice: 9000,
+    sizePrices: {
+      "Satuan": 9000
+    },
+  },
+  {
+    id: "hampers3",
+    name: "Hampers 3",
+    image: "/cookies/hampers3.jpeg",
+    basePrice: 19000,
+    sizePrices: {
+      "Satuan": 19000
+    },
+  },
+  {
+    id: "hampers4",
+    name: "Hampers 4",
+    image: "/cookies/hampers4.jpeg",
+    basePrice: 16000,
+    sizePrices: {
+      "Satuan": 16000
+    },
+  },
+  {
+    id: "hampers5",
+    name: "Hampers 5",
+    image: "/cookies/hampers5.jpeg",
+    basePrice: 3500,
+    sizePrices: {
+      "Satuan": 3500
     },
   },
 ];
