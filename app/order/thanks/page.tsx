@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function OrderThanksPage() {
+function OrderThanksContent() {
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get("orderId");
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center px-4 py-12">
       <div className="max-w-md w-full rounded-2xl bg-white p-8 shadow-lg text-center">
@@ -28,12 +33,27 @@ export default function OrderThanksPage() {
           Your order has been submitted successfully. We&apos;ll get back to you
           shortly via WhatsApp.
         </p>
-        <Link
-          href="/order"
-          className="mt-6 inline-block min-h-[48px] rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg"
-        >
-          Place another order
-        </Link>
+        {orderId && (
+          <p className="mt-2 text-xs text-gray-500">
+            Order ID: {orderId}
+          </p>
+        )}
+        <div className="mt-6 space-y-3">
+          {orderId && (
+            <Link
+              href={`/order/edit/${orderId}`}
+              className="block min-h-[48px] rounded-xl bg-dark-blue px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-dark-blue/90 hover:shadow-lg"
+            >
+              Edit Order
+            </Link>
+          )}
+          <Link
+            href="/order"
+            className="block min-h-[48px] rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg"
+          >
+            Place another order
+          </Link>
+        </div>
         <Link
           href="/"
           className="mt-3 block text-sm font-medium text-primary-pink hover:underline"
@@ -42,5 +62,20 @@ export default function OrderThanksPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function OrderThanksPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-pink mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <OrderThanksContent />
+    </Suspense>
   );
 }

@@ -11,6 +11,26 @@ export const GOOGLE_SHEET_ID =
     process.env?.NEXT_PUBLIC_GOOGLE_SHEET_ID) ||
   "";
 
+/**
+ * Normalize WhatsApp number: if it starts with 0, replace with +62
+ * Examples: "081234567890" -> "+6281234567890", "+6281234567890" -> "+6281234567890"
+ */
+export function normalizeWhatsAppNumber(whatsapp: string): string {
+  const cleaned = whatsapp.trim();
+  if (cleaned.startsWith("0")) {
+    return "+62" + cleaned.substring(1);
+  }
+  // If it already starts with +62 or 62, return as is (or normalize 62 to +62)
+  if (cleaned.startsWith("62") && !cleaned.startsWith("+62")) {
+    return "+" + cleaned;
+  }
+  if (cleaned.startsWith("+62")) {
+    return cleaned;
+  }
+  // If it doesn't start with 0, 62, or +62, assume it's already normalized or add +62
+  return cleaned.startsWith("+") ? cleaned : "+62" + cleaned;
+}
+
 export function buildWhatsAppOrderMessage(order: {
   orderId: string;
   orderDate: string;
@@ -56,11 +76,13 @@ export function buildSheetRow(order: {
         `${i.name} ${i.size} x ${i.quantity} = Rp ${i.subtotal.toLocaleString("id-ID")}`
     )
     .join(" | ");
+  // Normalize WhatsApp number: replace 0 with +62
+  const normalizedWhatsApp = normalizeWhatsAppNumber(order.customer.whatsapp);
   return {
     "Order ID": order.orderId,
     "Order Date": order.orderDate,
     "Customer Name": order.customer.name,
-    WhatsApp: order.customer.whatsapp,
+    WhatsApp: normalizedWhatsApp,
     Address: order.customer.address,
     Note: order.customer.note || "",
     "Order Type": typeLabel,

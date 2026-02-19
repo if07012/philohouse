@@ -31,7 +31,7 @@ function formatDate(date: Date): string {
 }
 
 function generateOrderId(): string {
-  return `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return `PHILO-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function createOrderItem(
@@ -274,9 +274,9 @@ export default function OrderFormPage() {
 
   useEffect(() => {
     if (submitSucceeded && !showSpinWheel) {
-      router.push("/order/thanks");
+      router.push(`/order/thanks?orderId=${orderState.orderId}`);
     }
-  }, [submitSucceeded, showSpinWheel, router]);
+  }, [submitSucceeded, showSpinWheel, router, orderState.orderId]);
 
   return (
     <GoogleReCaptchaProvider
@@ -471,7 +471,7 @@ export default function OrderFormPage() {
             onClose={() => {
               setShowSpinWheel(false);
               setSpinOrderInfo(null);
-              router.push("/order/thanks");
+              router.push(`/order/thanks?orderId=${orderState.orderId}`);
             }}
           />
         )}
