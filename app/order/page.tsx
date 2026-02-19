@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import OrderInfo from "./components/OrderInfo";
 import CustomerForm, { validateIndonesianPhone } from "./components/CustomerForm";
 import OrderType from "./components/OrderType";
@@ -20,6 +21,7 @@ import {
   buildSpinResultRow,
 } from "./data/cookies";
 import SpinWheel from "./components/SpinWheel";
+import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
 
 function formatDate(date: Date): string {
   const d = date.getDate().toString().padStart(2, "0");
@@ -70,6 +72,8 @@ export default function OrderFormPage() {
     orderId: string;
     customerName: string;
   } | null>(null);
+  const [submitSucceeded, setSubmitSucceeded] = useState(false);
+  const router = useRouter();
 
   const updateTotal = useCallback((items: OrderItem[]) => {
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -108,7 +112,7 @@ export default function OrderFormPage() {
 
   const updateItemQuantity = useCallback(
     (itemId: string, quantity: number) => {
-      const clampedQty = Math.max(1, quantity);
+      const clampedQty = Math.max(0, quantity);
       const newItems = orderState.items.map((item) =>
         item.id === itemId
           ? {
@@ -156,9 +160,35 @@ export default function OrderFormPage() {
     if (!orderState.customer.address.trim())
       newErrors.address = "Shipping address is required";
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return false;
+    if (Object.keys(newErrors).length > 0) {
+      // Find the first error field and scroll to it
+      const firstErrorField = Object.keys(newErrors)[0] as keyof typeof newErrors;
+      const fieldIdMap: Record<string, string> = {
+        name: "customer-name",
+        whatsapp: "customer-whatsapp",
+        address: "customer-address",
+      };
+      const fieldId = fieldIdMap[firstErrorField];
+      if (fieldId) {
+        setTimeout(() => {
+          const element = document.getElementById(fieldId);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+            element.focus();
+          }
+        }, 100);
+      }
+      return false;
+    }
     if (orderState.items.length === 0) {
       alert("Please add at least one cookie item to your order.");
+      // Scroll to the cookie section
+      setTimeout(() => {
+        const cookieSection = document.querySelector('[id="cookie-search"]')?.closest('section');
+        if (cookieSection) {
+          cookieSection.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
       return false;
     }
     return true;
@@ -184,7 +214,8 @@ export default function OrderFormPage() {
     };
 
     const chances = getSpinChances(total);
-    if (chances >= 1) {
+    const willShowSpin = chances >= 1;
+    if (willShowSpin) {
       setSpinsRemaining(chances);
       setSpinOrderInfo({
         orderId: orderData.orderId,
@@ -193,6 +224,7 @@ export default function OrderFormPage() {
       setShowSpinWheel(true);
     }
 
+    let submittedSuccessfully = true;
     try {
       if (GOOGLE_SHEET_ID) {
         const sheetRow = buildSheetRow(orderData);
@@ -209,6 +241,7 @@ export default function OrderFormPage() {
           const err = await ordersRes.json().catch(() => ({}));
           console.error("Google Sheet (Orders) write failed:", err);
           alert("Order saved to WhatsApp, but failed to save to Google Sheet.");
+          submittedSuccessfully = false;
         } else {
           const cookieRows = buildCookieDetailRows({
             orderId: orderData.orderId,
@@ -233,202 +266,217 @@ export default function OrderFormPage() {
     } catch (err) {
       console.error("Error saving to Google Sheet:", err);
       alert("Order saved to WhatsApp, but failed to save to Google Sheet.");
+      submittedSuccessfully = false;
     } finally {
-      setIsSubmitting(false);
+      if (submittedSuccessfully) setSubmitSucceeded(true);
     }
-
-
-
   };
 
+  useEffect(() => {
+    if (submitSucceeded && !showSpinWheel) {
+      router.push("/order/thanks");
+    }
+  }, [submitSucceeded, showSpinWheel, router]);
+
   return (
-    <div className="min-h-screen bg-gray-100 pb-24 sm:pb-8">
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
-        <header className="mb-6 sm:mb-8">
-          <h1 className="text-2xl font-bold text-dark-blue sm:text-3xl">
-            Cookie Order Form
-          </h1>
-          <p className="mt-1 text-sm text-gray-600 sm:text-base">
-            Fill in your details and select your favorite cookies
-          </p>
-        </header>
-
-        <form id="order-form" onSubmit={handleSubmit} className="space-y-6">
-          {/* Step 1: Order info & type - compact on mobile */}
-          <section className="space-y-4 sm:space-y-6">
-            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-              <OrderInfo
-                orderId={orderState.orderId}
-                orderDate={orderState.orderDate}
-              />
-              <OrderType
-                value={orderState.orderType}
-                onChange={handleOrderTypeChange}
-              />
-            </div>
-            <CustomerForm
-              customer={orderState.customer}
-              onChange={handleCustomerChange}
-              errors={errors}
-            />
-          </section>
-
-          {/* Step 2: Add cookies - scrollable on mobile */}
-          <section className="rounded-xl bg-white p-4 shadow-md sm:p-5">
-            <h2 className="mb-2 text-base font-semibold text-dark-blue sm:text-lg">
-              Add Cookies
-            </h2>
-            <p className="mb-4 text-xs text-gray-600 sm:text-sm">
-              Tap &quot;Add to Order&quot; to add cookies to your cart. <b>You can add the same cookie more than once with different sizes.</b>
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.REACT_APP_RECAPTCHA_SITE_KEY!}
+      scriptProps={{
+        async: true,
+        defer: true,
+        appendTo: "head",
+      }}
+    >
+      <div className="min-h-screen bg-gray-100 pb-24 sm:pb-8">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+          <header className="mb-6 sm:mb-8">
+            <h1 className="text-2xl font-bold text-dark-blue sm:text-3xl">
+              Cookie Order Form
+            </h1>
+            <p className="mt-1 text-sm text-gray-600 sm:text-base">
+              Fill in your details and select your favorite cookies
             </p>
-            <div className="mb-4">
-              <label htmlFor="cookie-search" className="sr-only">
-                Search cookies
-              </label>
-              <input
-                id="cookie-search"
-                type="search"
-                value={cookieSearch}
-                onChange={(e) => setCookieSearch(e.target.value)}
-                placeholder="Search cookies..."
-                autoComplete="off"
-                className="w-full min-h-[44px] rounded-lg border border-gray-300 px-4 py-2.5 text-base placeholder-gray-400 focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
-              />
-            </div>
-            {(() => {
-              const query = cookieSearch.trim().toLowerCase();
-              const filteredProducts = query
-                ? COOKIE_PRODUCTS.filter((p) =>
-                  p.name.toLowerCase().includes(query)
-                )
-                : COOKIE_PRODUCTS;
-              return filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-                  {filteredProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
-                    >
-                      <div className="relative aspect-square w-full bg-gray-100">
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                          unoptimized
-                        />
-                      </div>
-                      <div className="flex flex-1 flex-col p-2.5 sm:p-3">
-                        <h3 className="line-clamp-2 text-sm font-medium text-dark-blue sm:text-base">
-                          {product.name}
-                        </h3>
-                        <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-                          From Rp {product.basePrice.toLocaleString("id-ID")}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => addItem(product)}
-                          className="mt-2 min-h-[44px] w-full rounded-lg bg-primary-pink px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-pink/90 active:scale-[0.98] sm:mt-3"
-                        >
-                          Add to Order
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="py-8 text-center text-sm text-gray-500">
-                  No cookies found for &quot;{cookieSearch}&quot;
-                </p>
-              );
-            })()}
-          </section>
+          </header>
 
-          {/* Step 3: Your order */}
-          {orderState.items.length > 0 ? (
-            <section className="rounded-xl bg-white p-4 shadow-md sm:p-5">
-              <h2 className="mb-4 text-base font-semibold text-dark-blue sm:text-lg">
-                Your Order ({orderState.items.length} item
-                {orderState.items.length !== 1 ? "s" : ""})
-              </h2>
-              <div className="space-y-3 sm:space-y-4">
-                {orderState.items.map((item) => {
-                  const product = COOKIE_PRODUCTS.find(
-                    (p) => p.id === item.productId
-                  );
-                  return (
-                    <CookieItem
-                      key={item.id}
-                      item={item}
-                      onSizeChange={updateItemSize}
-                      onQuantityChange={updateItemQuantity}
-                      onRemove={removeItem}
-                      sizePrices={product?.sizePrices ?? { "400ml": 0, "600ml": 0, "800ml": 0 }}
-                    />
-                  );
-                })}
+          <form id="order-form" onSubmit={handleSubmit} className="space-y-6">
+            {/* Step 1: Order info & type - compact on mobile */}
+            <section className="space-y-4 sm:space-y-6">
+              <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+                <OrderInfo
+                  orderId={orderState.orderId}
+                  orderDate={orderState.orderDate}
+                />
+                <OrderType
+                  value={orderState.orderType}
+                  onChange={handleOrderTypeChange}
+                />
               </div>
+              <CustomerForm
+                customer={orderState.customer}
+                onChange={handleCustomerChange}
+                errors={errors}
+              />
             </section>
-          ) : (
-            <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-8 text-center">
-              <p className="text-sm text-gray-500 sm:text-base">
-                No cookies added yet. Tap &quot;Add to Order&quot; above to get
-                started.
+
+            {/* Step 2: Add cookies - scrollable on mobile */}
+            <section className="rounded-xl bg-white p-4 shadow-md sm:p-5">
+              <h2 className="mb-2 text-base font-semibold text-dark-blue sm:text-lg">
+                Add Cookies
+              </h2>
+              <p className="mb-4 text-xs text-gray-600 sm:text-sm">
+                Tap &quot;Add to Order&quot; to add cookies to your cart. <b>You can add the same cookie more than once with different sizes.</b>
               </p>
-            </div>
-          )}
+              <div className="mb-4">
+                <label htmlFor="cookie-search" className="sr-only">
+                  Search cookies
+                </label>
+                <input
+                  id="cookie-search"
+                  type="search"
+                  value={cookieSearch}
+                  onChange={(e) => setCookieSearch(e.target.value)}
+                  placeholder="Search cookies..."
+                  autoComplete="off"
+                  className="w-full min-h-[44px] rounded-lg border border-gray-300 px-4 py-2.5 text-base placeholder-gray-400 focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
+                />
+              </div>
+              {(() => {
+                const query = cookieSearch.trim().toLowerCase();
+                const filteredProducts = query
+                  ? COOKIE_PRODUCTS.filter((p) =>
+                    p.name.toLowerCase().includes(query)
+                  )
+                  : COOKIE_PRODUCTS;
+                return filteredProducts.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                    {filteredProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
+                      >
+                        <div className="relative aspect-square w-full bg-gray-100">
+                          <Image
+                            src={product.image}
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                            unoptimized
+                          />
+                        </div>
+                        <div className="flex flex-1 flex-col p-2.5 sm:p-3">
+                          <h3 className="line-clamp-2 text-sm font-medium text-dark-blue sm:text-base">
+                            {product.name}
+                          </h3>
+                          <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                            From Rp {product.basePrice.toLocaleString("id-ID")}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => addItem(product)}
+                            className="mt-2 min-h-[44px] w-full rounded-lg bg-primary-pink px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-pink/90 active:scale-[0.98] sm:mt-3"
+                          >
+                            Add to Order
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="py-8 text-center text-sm text-gray-500">
+                    No cookies found for &quot;{cookieSearch}&quot;
+                  </p>
+                );
+              })()}
+            </section>
 
-          {/* Summary + Submit - sticky on mobile */}
-          <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <OrderSummary
-              total={orderState.total}
-              itemCount={orderState.items.length}
-            />
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="min-h-[48px] w-full rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 sm:text-lg lg:w-auto lg:min-w-[200px]"
-            >
-              {isSubmitting ? "Saving..." : "Submit Order"}
-            </button>
-          </section>
-        </form>
-      </div>
+            {/* Step 3: Your order */}
+            {orderState.items.length > 0 ? (
+              <section className="rounded-xl bg-white p-4 shadow-md sm:p-5">
+                <h2 className="mb-4 text-base font-semibold text-dark-blue sm:text-lg">
+                  Your Order ({orderState.items.length} item
+                  {orderState.items.length !== 1 ? "s" : ""})
+                </h2>
+                <div className="space-y-3 sm:space-y-4">
+                  {orderState.items.map((item) => {
+                    const product = COOKIE_PRODUCTS.find(
+                      (p) => p.id === item.productId
+                    );
+                    return (
+                      <CookieItem
+                        key={item.id}
+                        item={item}
+                        onSizeChange={updateItemSize}
+                        onQuantityChange={updateItemQuantity}
+                        onRemove={removeItem}
+                        sizePrices={product?.sizePrices ?? { "400ml": 0, "600ml": 0, "800ml": 0 }}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            ) : (
+              <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-8 text-center">
+                <p className="text-sm text-gray-500 sm:text-base">
+                  No cookies added yet. Tap &quot;Add to Order&quot; above to get
+                  started.
+                </p>
+              </div>
+            )}
 
-      {showSpinWheel && spinOrderInfo && (
-        <SpinWheel
-          prizes={SPIN_PRIZES}
-          spinsRemaining={spinsRemaining}
-          onSpinComplete={async (prize) => {
-            setSpinsRemaining((prev) => prev - 1);
-            if (GOOGLE_SHEET_ID && prize.label !== "Try Again") {
-              try {
-                const row = buildSpinResultRow({
-                  orderId: spinOrderInfo.orderId,
-                  customerName: spinOrderInfo.customerName,
-                  gift: prize.label,
-                });
-                await fetch("/api/sheets/write", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    spreadsheetId: GOOGLE_SHEET_ID,
-                    data: [row],
-                    sheetName: "Spin Rewards",
-                  }),
-                });
-              } catch (err) {
-                console.error("Failed to save spin reward:", err);
+            {/* Summary + Submit - sticky on mobile */}
+            <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <OrderSummary
+                total={orderState.total}
+                itemCount={orderState.items.length}
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="min-h-[48px] w-full rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 sm:text-lg lg:w-auto lg:min-w-[200px]"
+              >
+                {isSubmitting ? "Saving..." : "Submit Order"}
+              </button>
+            </section>
+          </form>
+        </div>
+
+        {showSpinWheel && spinOrderInfo && (
+          <SpinWheel
+            prizes={SPIN_PRIZES}
+            spinsRemaining={spinsRemaining}
+            onSpinComplete={async (prize) => {
+              setSpinsRemaining((prev) => prev - 1);
+              if (GOOGLE_SHEET_ID && prize.label !== "Try Again") {
+                try {
+                  const row = buildSpinResultRow({
+                    orderId: spinOrderInfo.orderId,
+                    customerName: spinOrderInfo.customerName,
+                    gift: prize.label,
+                  });
+                  await fetch("/api/sheets/write", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      spreadsheetId: GOOGLE_SHEET_ID,
+                      data: [row],
+                      sheetName: "Spin Rewards",
+                    }),
+                  });
+                } catch (err) {
+                  console.error("Failed to save spin reward:", err);
+                }
               }
-            }
-          }}
-          onClose={() => {
-            setShowSpinWheel(false);
-            setSpinOrderInfo(null);
-          }}
-        />
-      )}
-    </div>
+            }}
+            onClose={() => {
+              setShowSpinWheel(false);
+              setSpinOrderInfo(null);
+              router.push("/order/thanks");
+            }}
+          />
+        )}
+      </div>
+    </GoogleReCaptchaProvider>
+
   );
 }

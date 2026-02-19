@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { OrderItem, SizeOption } from "../types";
 import { SIZE_OPTIONS } from "../data/cookies";
+import { useState } from "react";
 
 interface CookieItemProps {
   item: OrderItem;
@@ -19,10 +20,15 @@ export default function CookieItem({
   onRemove,
   sizePrices,
 }: CookieItemProps) {
+  const [isEmpty, setIsEmpty] = useState(false);
   const handleQuantityChange = (value: string) => {
     const num = parseInt(value, 10);
-    if (!isNaN(num) && num >= 1) {
+    if (!isNaN(num) && num >= 0) {
       onQuantityChange(item.id, num);
+      setIsEmpty(false);
+    } else {
+      onQuantityChange(item.id, 0);
+      setIsEmpty(true);
     }
   };
 
@@ -87,10 +93,7 @@ export default function CookieItem({
                 Quantity
               </label>
               <input
-                type="number"
-                min={1}
-                inputMode="numeric"
-                value={item.quantity}
+                value={isEmpty ? '' : item.quantity}
                 onChange={(e) => handleQuantityChange(e.target.value)}
                 className="mt-1 min-h-[44px] min-w-[72px] rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
               />
