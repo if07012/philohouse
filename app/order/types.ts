@@ -7,6 +7,7 @@ export interface CustomerData {
   whatsapp: string;
   address: string;
   note: string;
+  sales?: string;
 }
 
 export interface CookieProduct {

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import OrderInfo from "./components/OrderInfo";
 import CustomerForm, { validateIndonesianPhone } from "./components/CustomerForm";
 import OrderType from "./components/OrderType";
@@ -57,11 +57,32 @@ function createOrderItem(
   };
 }
 
+const SALES_STORAGE_KEY = "cookie_order_sales_id";
+
 export default function OrderFormPage() {
+  const searchParams = useSearchParams();
+  const salesParam = searchParams.get("sales") || "";
+  
+  // Get sales from query param or localStorage
+  const getInitialSales = () => {
+    if (salesParam) {
+      // Save to localStorage if provided via query param
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SALES_STORAGE_KEY, salesParam);
+      }
+      return salesParam;
+    }
+    // Try to get from localStorage
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(SALES_STORAGE_KEY) || "";
+    }
+    return "";
+  };
+  
   const [orderState, setOrderState] = useState<OrderState>(() => ({
     orderId: generateOrderId(),
     orderDate: formatDate(new Date()),
-    customer: { name: "", whatsapp: "", address: "", note: "" },
+    customer: { name: "", whatsapp: "", address: "", note: "", sales: getInitialSales() },
     orderType: "single",
     items: [],
     total: 0,
@@ -80,6 +101,20 @@ export default function OrderFormPage() {
   const [fullscreenImage, setFullscreenImage] = useState<{ src: string; alt: string } | null>(null);
   const [giftsWon, setGiftsWon] = useState<string[]>([]);
   const router = useRouter();
+
+  // Update sales if query parameter changes
+  useEffect(() => {
+    if (salesParam) {
+      // Save to localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SALES_STORAGE_KEY, salesParam);
+      }
+      setOrderState((prev) => ({
+        ...prev,
+        customer: { ...prev.customer, sales: salesParam },
+      }));
+    }
+  }, [salesParam]);
 
   const updateTotal = useCallback((items: OrderItem[]) => {
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -142,12 +177,15 @@ export default function OrderFormPage() {
   );
 
   const handleCustomerChange = useCallback(
-    (field: "name" | "whatsapp" | "address" | "note", value: string) => {
+    (field: "name" | "whatsapp" | "address" | "note" | "sales", value: string) => {
+      // Sales is read-only, don't allow changes
+      if (field === "sales") return;
+      
       setOrderState((prev) => ({
         ...prev,
         customer: { ...prev.customer, [field]: value },
       }));
-      if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+      if (errors[field as keyof typeof errors]) setErrors((prev) => ({ ...prev, [field as keyof typeof errors]: undefined }));
     },
     [errors]
   );

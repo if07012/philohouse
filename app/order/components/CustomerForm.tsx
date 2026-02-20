@@ -5,12 +5,13 @@ export interface CustomerData {
   whatsapp: string;
   address: string;
   note?: string;
+  sales?: string;
 }
 
 interface CustomerFormProps {
   customer: CustomerData;
-  onChange: (field: keyof CustomerData, value: string) => void;
-  errors: Partial<Record<keyof CustomerData, string>>;
+  onChange: (field: "name" | "whatsapp" | "address" | "note" | "sales", value: string) => void;
+  errors: Partial<Record<"name" | "whatsapp" | "address" | "note", string>>;
 }
 
 export function validateIndonesianPhone(phone: string): boolean {
@@ -50,9 +51,8 @@ export default function CustomerForm({
             onChange={(e) => onChange("name", e.target.value)}
             placeholder="Nama lengkap Anda"
             autoComplete="name"
-            className={`mt-1 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${
-              errors.name ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`mt-1 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${errors.name ? "border-red-500" : "border-gray-300"
+              }`}
           />
           {errors.name && (
             <p className="mt-1 text-sm text-red-500">{errors.name}</p>
@@ -74,9 +74,8 @@ export default function CustomerForm({
             onBlur={handleWhatsAppBlur}
             placeholder="08xxxxxxxxxx atau +628xxxxxxxxxx"
             autoComplete="tel"
-            className={`mt-1 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${
-              errors.whatsapp ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`mt-1 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${errors.whatsapp ? "border-red-500" : "border-gray-300"
+              }`}
           />
           {errors.whatsapp && (
             <p className="mt-1 text-sm text-red-500">{errors.whatsapp}</p>
@@ -96,9 +95,8 @@ export default function CustomerForm({
             placeholder="Alamat pengiriman lengkap"
             rows={3}
             autoComplete="street-address"
-            className={`mt-1 min-h-[88px] w-full resize-none rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${
-              errors.address ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`mt-1 min-h-[88px] w-full resize-none rounded-lg border px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm ${errors.address ? "border-red-500" : "border-gray-300"
+              }`}
           />
           {errors.address && (
             <p className="mt-1 text-sm text-red-500">{errors.address}</p>
@@ -120,6 +118,19 @@ export default function CustomerForm({
             className="mt-1 min-h-[64px] w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
           />
         </div>
+        {customer.sales && (
+          <div>
+
+            <input
+              hidden={true}
+              id="customer-sales"
+              type="text"
+              value={customer.sales}
+              readOnly
+              className="mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-base text-gray-600 sm:text-sm"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

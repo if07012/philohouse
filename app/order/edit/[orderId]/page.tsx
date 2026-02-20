@@ -14,6 +14,7 @@ import {
   GOOGLE_SHEET_ID,
   buildSheetRow,
   buildCookieDetailRows,
+  buildTelegramOrderUpdateMessage,
 } from "../../data/cookies";
 
 function createOrderItem(
@@ -21,7 +22,9 @@ function createOrderItem(
   size: SizeOption,
   quantity: number
 ): OrderItem {
-  const price = product.sizePrices[size];
+  let price = product.sizePrices[size];
+  if(!price)
+    price = product.sizePrices["Satuan"]
   const subtotal = price * quantity;
   return {
     id: `${product.id}-${size}-${Date.now()}-${Math.random()}`,
@@ -109,6 +112,7 @@ export default function EditOrderPage() {
   const orderId = params.orderId as string;
 
   const [orderState, setOrderState] = useState<OrderState | null>(null);
+  const [originalOrderState, setOriginalOrderState] = useState<OrderState | null>(null);
   const [errors, setErrors] = useState<Partial<Record<"name" | "whatsapp" | "address" | "note", string>>>({});
   const [cookieSearch, setCookieSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,7 +137,14 @@ export default function EditOrderPage() {
         // Parse items
         const items = parseItemsFromSheet(order.Items || '', cookieDetails || []);
 
-        setOrderState({
+        const salesFromOrder = order['Sales'] || '';
+        
+        // Save sales to localStorage if present
+        if (salesFromOrder && typeof window !== "undefined") {
+          localStorage.setItem("cookie_order_sales_id", salesFromOrder);
+        }
+        
+        const loadedOrderState: OrderState = {
           orderId: order['Order ID'],
           orderDate: order['Order Date'],
           customer: {
@@ -141,11 +152,16 @@ export default function EditOrderPage() {
             whatsapp: order['WhatsApp'] || '',
             address: order['Address'] || '',
             note: order['Note'] || '',
+            sales: salesFromOrder || (typeof window !== "undefined" ? localStorage.getItem("cookie_order_sales_id") || '' : ''),
           },
           orderType,
           items,
           total: parseFloat(order['Total']) || 0,
-        });
+        };
+        
+        setOrderState(loadedOrderState);
+        // Store original state for comparison
+        setOriginalOrderState(JSON.parse(JSON.stringify(loadedOrderState)));
       } catch (err) {
         console.error('Error loading order:', err);
         setLoadError('Failed to load order');
@@ -224,13 +240,16 @@ export default function EditOrderPage() {
   );
 
   const handleCustomerChange = useCallback(
-    (field: "name" | "whatsapp" | "address" | "note", value: string) => {
+    (field: "name" | "whatsapp" | "address" | "note" | "sales", value: string) => {
       if (!orderState) return;
+      // Sales is read-only, don't allow changes
+      if (field === "sales") return;
+      
       setOrderState((prev) => prev ? {
         ...prev,
         customer: { ...prev.customer, [field]: value },
       } : null);
-      if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+      if (errors[field as keyof typeof errors]) setErrors((prev) => ({ ...prev, [field as keyof typeof errors]: undefined }));
     },
     [orderState, errors]
   );
@@ -317,7 +336,45 @@ export default function EditOrderPage() {
         return;
       }
 
-      alert("Order updated successfully!");
+      // Send Telegram notification with changes
+      if (originalOrderState) {
+        try {
+          const oldOrderData = {
+            customer: originalOrderState.customer,
+            orderType: originalOrderState.orderType,
+            items: originalOrderState.items.map((i) => ({
+              name: i.name,
+              size: i.size,
+              quantity: i.quantity,
+              subtotal: i.subtotal,
+            })),
+            total: originalOrderState.total,
+          };
+          
+          const newOrderData = {
+            customer: orderData.customer,
+            orderType: orderData.orderType,
+            items: orderData.items,
+            total: orderData.total,
+          };
+          
+          const telegramMessage = buildTelegramOrderUpdateMessage(
+            orderId,
+            oldOrderData,
+            newOrderData
+          );
+          
+          await fetch("/api/telegram/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: telegramMessage }),
+          });
+        } catch (telegramErr) {
+          console.error("Failed to send Telegram notification:", telegramErr);
+          // Don't fail the order update if Telegram fails
+        }
+      }
+
       router.push(`/order/thanks?orderId=${orderId}`);
     } catch (err) {
       console.error("Error updating order:", err);

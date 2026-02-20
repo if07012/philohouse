@@ -7,6 +7,19 @@ import { Suspense } from "react";
 function OrderThanksContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
+  
+  // Get sales ID from localStorage to include in links
+  const getSalesParam = () => {
+    if (typeof window !== "undefined") {
+      const salesId = localStorage.getItem("cookie_order_sales_id");
+      return salesId ? `?sales=${encodeURIComponent(salesId)}` : "";
+    }
+    return "";
+  };
+  
+  const salesParam = getSalesParam();
+  const editLink = orderId ? `/order/edit/${orderId}${salesParam}` : "";
+  const newOrderLink = `/order${salesParam}`;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center px-4 py-12">
@@ -41,14 +54,14 @@ function OrderThanksContent() {
         <div className="mt-6 space-y-3">
           {orderId && (
             <Link
-              href={`/order/edit/${orderId}`}
+              href={editLink}
               className="block min-h-[48px] rounded-xl bg-dark-blue px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-dark-blue/90 hover:shadow-lg"
             >
               Edit Order
             </Link>
           )}
           <Link
-            href="/order"
+            href={newOrderLink}
             className="block min-h-[48px] rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg"
           >
             Place another order
