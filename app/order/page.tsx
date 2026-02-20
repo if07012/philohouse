@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import OrderInfo from "./components/OrderInfo";
@@ -59,7 +59,7 @@ function createOrderItem(
 
 const SALES_STORAGE_KEY = "cookie_order_sales_id";
 
-export default function OrderFormPage() {
+function OrderFormContent() {
   const searchParams = useSearchParams();
   const salesParam = searchParams.get("sales") || "";
   
@@ -642,5 +642,20 @@ export default function OrderFormPage() {
       </div>
     </GoogleReCaptchaProvider>
 
+  );
+}
+
+export default function OrderFormPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-pink mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat...</p>
+        </div>
+      </div>
+    }>
+      <OrderFormContent />
+    </Suspense>
   );
 }
