@@ -11,11 +11,9 @@ import OrderSummary from "./components/OrderSummary";
 import type { OrderState, OrderItem, SizeOption, CookieProduct } from "./types";
 import {
   COOKIE_PRODUCTS,
-  STORE_WHATSAPP_NUMBER,
   GOOGLE_SHEET_ID,
   getSpinChances,
   SPIN_PRIZES,
-  buildWhatsAppOrderMessage,
   buildSheetRow,
   buildCookieDetailRows,
   buildSpinResultRow,
