@@ -19,6 +19,7 @@ import {
   buildSheetRow,
   buildCookieDetailRows,
   buildSpinResultRow,
+  buildTelegramOrderMessage,
 } from "./data/cookies";
 import SpinWheel from "./components/SpinWheel";
 import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
@@ -77,6 +78,7 @@ export default function OrderFormPage() {
   } | null>(null);
   const [submitSucceeded, setSubmitSucceeded] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<{ src: string; alt: string } | null>(null);
+  const [giftsWon, setGiftsWon] = useState<string[]>([]);
   const router = useRouter();
 
   const updateTotal = useCallback((items: OrderItem[]) => {
@@ -264,6 +266,25 @@ export default function OrderFormPage() {
           if (!detailsRes.ok) {
             const err = await detailsRes.json().catch(() => ({}));
             console.error("Google Sheet (Cookie Details) write failed:", err);
+          } else {
+            // Send Telegram notification after successful save (only if spin wheel won't be shown)
+            // If spin wheel will be shown, notification will be sent after it closes
+            if (!willShowSpin) {
+              try {
+                const telegramMessage = buildTelegramOrderMessage({
+                  ...orderData,
+                  gifts: giftsWon.length > 0 ? giftsWon : undefined,
+                });
+                await fetch("/api/telegram/send", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ message: telegramMessage }),
+                });
+              } catch (telegramErr) {
+                console.error("Failed to send Telegram notification:", telegramErr);
+                // Don't fail the order submission if Telegram fails
+              }
+            }
           }
         }
       }
@@ -472,29 +493,66 @@ export default function OrderFormPage() {
             spinsRemaining={spinsRemaining}
             onSpinComplete={async (prize) => {
               setSpinsRemaining((prev) => prev - 1);
-              if (GOOGLE_SHEET_ID && prize.label !== "Try Again") {
-                try {
-                  const row = buildSpinResultRow({
-                    orderId: spinOrderInfo.orderId,
-                    customerName: spinOrderInfo.customerName,
-                    gift: prize.label,
-                  });
-                  await fetch("/api/sheets/write", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      spreadsheetId: GOOGLE_SHEET_ID,
-                      data: [row],
-                      sheetName: "Spin Rewards",
-                    }),
-                  });
-                } catch (err) {
-                  console.error("Failed to save spin reward:", err);
+              // Track gift if not "Try Again"
+              if (prize.label !== "Try Again") {
+                setGiftsWon((prev) => [...prev, prize.label]);
+                
+                if (GOOGLE_SHEET_ID) {
+                  try {
+                    const row = buildSpinResultRow({
+                      orderId: spinOrderInfo.orderId,
+                      customerName: spinOrderInfo.customerName,
+                      gift: prize.label,
+                    });
+                    await fetch("/api/sheets/write", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        spreadsheetId: GOOGLE_SHEET_ID,
+                        data: [row],
+                        sheetName: "Spin Rewards",
+                      }),
+                    });
+                  } catch (err) {
+                    console.error("Failed to save spin reward:", err);
+                  }
                 }
               }
             }}
-            onClose={() => {
+            onClose={async () => {
               setShowSpinWheel(false);
+              
+              // Send Telegram notification after spin wheel closes (if order was successfully submitted)
+              // This ensures gifts are included in the notification
+              if (submitSucceeded) {
+                try {
+                  const orderData = {
+                    orderId: orderState.orderId,
+                    orderDate: orderState.orderDate,
+                    customer: orderState.customer,
+                    orderType: orderState.orderType,
+                    items: orderState.items.map((i) => ({
+                      name: i.name,
+                      size: i.size,
+                      quantity: i.quantity,
+                      subtotal: i.subtotal,
+                    })),
+                    total: orderState.total,
+                  };
+                  const telegramMessage = buildTelegramOrderMessage({
+                    ...orderData,
+                    gifts: giftsWon,
+                  });
+                  await fetch("/api/telegram/send", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: telegramMessage }),
+                  });
+                } catch (telegramErr) {
+                  console.error("Failed to send Telegram notification:", telegramErr);
+                }
+              }
+              
               setSpinOrderInfo(null);
               router.push(`/order/thanks?orderId=${orderState.orderId}`);
             }}

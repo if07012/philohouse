@@ -61,6 +61,112 @@ export function buildWhatsAppOrderMessage(order: {
   return msg;
 }
 
+/**
+ * Build plain text message for WhatsApp (same content as Telegram but without HTML)
+ */
+function buildWhatsAppMessageText(order: {
+  orderId: string;
+  orderDate: string;
+  customer: { name: string; whatsapp: string; address: string; note: string };
+  orderType: string;
+  items: { name: string; size: string; quantity: number; subtotal: number }[];
+  total: number;
+  gifts?: string[];
+}): string {
+  const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
+  const normalizedWhatsApp = normalizeWhatsAppNumber(order.customer.whatsapp);
+  
+  let msg = `New Cookie Order - ${order.orderId}\n\n`;
+  
+  msg += `Order Info\n`;
+  msg += `Order ID: ${order.orderId}\n`;
+  msg += `Order Date: ${order.orderDate}\n`;
+  msg += `Order Type: ${typeLabel}\n\n`;
+  
+  msg += `Customer Information\n`;
+  msg += `Name: ${order.customer.name}\n`;
+  msg += `WhatsApp: ${normalizedWhatsApp}\n`;
+  msg += `Address: ${order.customer.address}\n`;
+  if (order.customer.note?.trim()) {
+    msg += `Note: ${order.customer.note}\n`;
+  }
+  msg += `\n`;
+  
+  msg += `Cookie Details\n`;
+  order.items.forEach((item, index) => {
+    msg += `${index + 1}. ${item.name} ${item.size}\n`;
+    msg += `   Quantity: ${item.quantity}\n`;
+    msg += `   Subtotal: Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
+    if (index < order.items.length - 1) msg += `\n`;
+  });
+  msg += `\n`;
+  
+  msg += `Total: Rp ${order.total.toLocaleString("id-ID")}\n`;
+  
+  if (order.gifts && order.gifts.length > 0) {
+    msg += `\nGifts Won\n`;
+    order.gifts.forEach((gift, index) => {
+      msg += `${index + 1}. ${gift}\n`;
+    });
+  }
+  
+  return msg;
+}
+
+export function buildTelegramOrderMessage(order: {
+  orderId: string;
+  orderDate: string;
+  customer: { name: string; whatsapp: string; address: string; note: string };
+  orderType: string;
+  items: { name: string; size: string; quantity: number; subtotal: number }[];
+  total: number;
+  gifts?: string[];
+}): string {
+  const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
+  const normalizedWhatsApp = normalizeWhatsAppNumber(order.customer.whatsapp);
+  
+  let msg = `<b>New Cookie Order - ${order.orderId}</b>\n\n`;
+  
+  msg += `<b>Order Info</b>\n`;
+  msg += `Order ID: <code>${order.orderId}</code>\n`;
+  msg += `Order Date: ${order.orderDate}\n`;
+  msg += `Order Type: ${typeLabel}\n\n`;
+  
+  msg += `<b>Customer Information</b>\n`;
+  msg += `Name: ${order.customer.name}\n`;
+  msg += `WhatsApp: <code>${normalizedWhatsApp}</code>\n`;
+  msg += `Address: ${order.customer.address}\n`;
+  if (order.customer.note?.trim()) {
+    msg += `Note: ${order.customer.note}\n`;
+  }
+  msg += `\n`;
+  
+  msg += `<b>Cookie Details</b>\n`;
+  order.items.forEach((item, index) => {
+    msg += `${index + 1}. ${item.name} ${item.size} `;
+    msg += `   Qty: ${item.quantity}\n`;
+    if (index < order.items.length - 1) msg += `\n`;
+  });
+  msg += `\n`;
+  
+  
+  if (order.gifts && order.gifts.length > 0) {
+    msg += `\n<b>Gifts Won</b>\n`;
+    order.gifts.forEach((gift, index) => {
+      msg += `${index + 1}. ${gift}\n`;
+    });
+  }
+  
+  // Add WhatsApp link
+  const whatsappMessageText = buildWhatsAppMessageText(order);
+  const encodedMessage = encodeURIComponent(whatsappMessageText);
+  const whatsappUrl = `https://wa.me/${normalizedWhatsApp}?text=${encodedMessage}`;
+  
+  msg += `\n\n<a href="${whatsappUrl}">Send to WhatsApp</a>`;
+  
+  return msg;
+}
+
 export function buildSheetRow(order: {
   orderId: string;
   orderDate: string;
