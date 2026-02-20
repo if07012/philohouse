@@ -1,8 +1,5 @@
 import type { CookieProduct, SizeOption } from "../types";
 
-// Store WhatsApp number (with country code, no + or 0). Replace with your business number.
-export const STORE_WHATSAPP_NUMBER = "6285659763336";
-
 // Google Sheet ID for order storage. Get from the sheet URL: .../d/SHEET_ID/edit
 // Option 1: Set NEXT_PUBLIC_GOOGLE_SHEET_ID in .env.local
 // Option 2: Replace the empty string below with your Sheet ID
@@ -486,9 +483,8 @@ export function buildTelegramOrderMessage(order: {
   
   // Add WhatsApp link
   const whatsappMessageText = buildWhatsAppMessageText(order);
-  const whatsappNumber = STORE_WHATSAPP_NUMBER;
   const encodedMessage = encodeURIComponent(whatsappMessageText);
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+  const whatsappUrl = `https://wa.me/${normalizedWhatsApp}?text=${encodedMessage}`;
   
   msg += `\n\n<a href="${whatsappUrl}">Kirim ke WhatsApp</a>`;
   
