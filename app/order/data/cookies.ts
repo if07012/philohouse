@@ -246,9 +246,6 @@ export function buildTelegramOrderUpdateMessage(
   }
   
   // Compare total
-  if (oldOrder.total !== newOrder.total) {
-    changes.push(`Total: Rp ${oldOrder.total.toLocaleString("id-ID")} → Rp ${newOrder.total.toLocaleString("id-ID")}`);
-  }
   
   if (changes.length === 0) {
     msg += `Tidak ada perubahan yang terdeteksi.\n\n`;
@@ -276,7 +273,6 @@ export function buildTelegramOrderUpdateMessage(
     msg += `${index + 1}. ${item.name} ${item.size} x ${item.quantity} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
   });
   msg += `\n`;
-  msg += `<b>Total: Rp ${newOrder.total.toLocaleString("id-ID")}</b>`;
   
   // Add WhatsApp link
   const whatsappMessageText = buildWhatsAppOrderUpdateMessage(orderId, oldOrder, newOrder);
@@ -391,11 +387,6 @@ function buildWhatsAppOrderUpdateMessage(
     changes.push(...updatedItems);
   }
   
-  // Compare total
-  if (oldOrder.total !== newOrder.total) {
-    changes.push(`Total: Rp ${oldOrder.total.toLocaleString("id-ID")} → Rp ${newOrder.total.toLocaleString("id-ID")}`);
-  }
-  
   if (changes.length === 0) {
     msg += `Tidak ada perubahan yang terdeteksi.\n\n`;
   } else {
@@ -422,7 +413,6 @@ function buildWhatsAppOrderUpdateMessage(
     msg += `${index + 1}. ${item.name} ${item.size} x ${item.quantity} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
   });
   msg += `\n`;
-  msg += `Total: Rp ${newOrder.total.toLocaleString("id-ID")}`;
   
   // Add edit order link
   const baseUrl = getBaseUrl();
