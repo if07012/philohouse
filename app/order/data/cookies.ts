@@ -280,9 +280,8 @@ export function buildTelegramOrderUpdateMessage(
   
   // Add WhatsApp link
   const whatsappMessageText = buildWhatsAppOrderUpdateMessage(orderId, oldOrder, newOrder);
-  const whatsappNumber = STORE_WHATSAPP_NUMBER;
   const encodedMessage = encodeURIComponent(whatsappMessageText);
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+  const whatsappUrl = `https://wa.me/${normalizedNewWhatsApp}?text=${encodedMessage}`;
   
   msg += `\n\n<a href="${whatsappUrl}">Kirim ke WhatsApp</a>`;
   
