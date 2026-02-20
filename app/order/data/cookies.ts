@@ -12,6 +12,25 @@ export const GOOGLE_SHEET_ID =
   "";
 
 /**
+ * Get base URL for the application
+ */
+function getBaseUrl(): string {
+  // Client-side: use window.location
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  // Server-side: use environment variable or fallback
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // Fallback (should be configured in production)
+  return "https://your-domain.com";
+}
+
+/**
  * Normalize WhatsApp number: if it starts with 0, replace with +62
  * Examples: "081234567890" -> "+6281234567890", "+6281234567890" -> "+6281234567890"
  */
@@ -61,6 +80,13 @@ export function buildWhatsAppOrderMessage(order: {
       (msg += `• ${item.name} ${item.size} x ${item.quantity} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`)
   );
   msg += `\n*Total: Rp ${order.total.toLocaleString("id-ID")}*`;
+  
+  // Add edit order link
+  const baseUrl = getBaseUrl();
+  const salesParam = order.customer.sales ? `?sales=${encodeURIComponent(order.customer.sales)}` : "";
+  const editLink = `${baseUrl}/order/edit/${order.orderId}${salesParam}`;
+  msg += `\n\nEdit Pesanan: ${editLink}`;
+  
   return msg;
 }
 
@@ -112,6 +138,12 @@ function buildWhatsAppMessageText(order: {
       msg += `${index + 1}. ${gift}\n`;
     });
   }
+  
+  // Add edit order link
+  const baseUrl = getBaseUrl();
+  const salesParam = order.customer.sales ? `?sales=${encodeURIComponent(order.customer.sales)}` : "";
+  const editLink = `${baseUrl}/order/edit/${order.orderId}${salesParam}`;
+  msg += `\n\nEdit Pesanan: ${editLink}`;
   
   return msg;
 }
@@ -395,6 +427,12 @@ function buildWhatsAppOrderUpdateMessage(
   });
   msg += `\n`;
   msg += `Total: Rp ${newOrder.total.toLocaleString("id-ID")}`;
+  
+  // Add edit order link
+  const baseUrl = getBaseUrl();
+  const salesParam = newOrder.customer.sales ? `?sales=${encodeURIComponent(newOrder.customer.sales)}` : "";
+  const editLink = `${baseUrl}/order/edit/${orderId}${salesParam}`;
+  msg += `\n\nEdit Pesanan: ${editLink}`;
   
   return msg;
 }
