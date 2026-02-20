@@ -26,12 +26,12 @@ export default function Home() {
           <h1 className="text-4xl md:text-5xl font-extrabold text-white">
             Fresh, Small-Batch Cookies — Made for Smiles 🍪
           </h1>
-          <p className="text-white/90 text-lg leading-relaxed max-w-xl">
+          <p className="text-white/90 text-lg leading-relaxed max-w-xl md:h-auto hidden md:block">
             Handcrafted in small batches with premium ingredients and a lot of care.
             Whether it's a thoughtful gift or a daily treat, our cookies turn ordinary moments into delightful memories.
           </p>
 
-          {false && <OrderButton />}
+          {true && <OrderButton />}
         </div>
 
       </section>
