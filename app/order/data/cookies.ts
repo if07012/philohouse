@@ -486,7 +486,7 @@ export function buildSheetRow(order: {
   orderType: string;
   items: { name: string; size: string; quantity: number; subtotal: number }[];
   total: number;
-}, spinFields?: { eligibleForGift: "Ya" | "Tidak"; spinsUsed: number; spinCompleted: "Ya" | "Tidak" | "Skipped" }): Record<string, string | number> {
+}, spinFields?: any): Record<string, string | number> {
   const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
   const itemsStr = order.items
     .map(
