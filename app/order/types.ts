@@ -14,6 +14,7 @@ export interface CookieProduct {
   id: string;
   name: string;
   image: string;
+  orderType?: "single" | "hampers";
   basePrice: number;
   sizePrices: Record<string, number>;
 }

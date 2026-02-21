@@ -39,7 +39,7 @@ function createOrderItem(
   quantity: number
 ): OrderItem {
   let price = product.sizePrices[size];
-  if(!price)
+  if (!price)
     price = product.sizePrices["Satuan"]
   debugger
   const subtotal = price * quantity;
@@ -60,7 +60,7 @@ const SALES_STORAGE_KEY = "cookie_order_sales_id";
 function OrderFormContent() {
   const searchParams = useSearchParams();
   const salesParam = searchParams.get("sales") || "";
-  
+
   // Get sales from query param or localStorage
   const getInitialSales = () => {
     if (salesParam) {
@@ -76,7 +76,7 @@ function OrderFormContent() {
     }
     return "";
   };
-  
+
   const [orderState, setOrderState] = useState<OrderState>(() => ({
     orderId: generateOrderId(),
     orderDate: formatDate(new Date()),
@@ -94,6 +94,7 @@ function OrderFormContent() {
   const [spinOrderInfo, setSpinOrderInfo] = useState<{
     orderId: string;
     customerName: string;
+    initialChances: number;
   } | null>(null);
   const [submitSucceeded, setSubmitSucceeded] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<{ src: string; alt: string } | null>(null);
@@ -178,7 +179,7 @@ function OrderFormContent() {
     (field: "name" | "whatsapp" | "address" | "note" | "sales", value: string) => {
       // Sales is read-only, don't allow changes
       if (field === "sales") return;
-      
+
       setOrderState((prev) => ({
         ...prev,
         customer: { ...prev.customer, [field]: value },
@@ -262,6 +263,7 @@ function OrderFormContent() {
       setSpinOrderInfo({
         orderId: orderData.orderId,
         customerName: orderData.customer.name,
+        initialChances: chances,
       });
       setShowSpinWheel(true);
     }
@@ -269,7 +271,11 @@ function OrderFormContent() {
     let submittedSuccessfully = true;
     try {
       if (GOOGLE_SHEET_ID) {
-        const sheetRow = buildSheetRow(orderData);
+        const sheetRow = buildSheetRow(orderData, {
+          eligibleForGift: willShowSpin ? "Ya" : "Tidak",
+          spinsUsed: 0,
+          spinCompleted: "Tidak",
+        });
         const ordersRes = await fetch("/api/sheets/write", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -320,6 +326,7 @@ function OrderFormContent() {
                 console.error("Failed to send Telegram notification:", telegramErr);
                 // Don't fail the order submission if Telegram fails
               }
+              window.location.href = (`/order/thanks?orderId=${orderState.orderId}`);
             }
           }
         }
@@ -332,12 +339,6 @@ function OrderFormContent() {
       if (submittedSuccessfully) setSubmitSucceeded(true);
     }
   };
-
-  useEffect(() => {
-    if (submitSucceeded && !showSpinWheel) {
-      router.push(`/order/thanks?orderId=${orderState.orderId}`);
-    }
-  }, [submitSucceeded, showSpinWheel, router, orderState.orderId]);
 
   return (
     <GoogleReCaptchaProvider
@@ -403,11 +404,13 @@ function OrderFormContent() {
               </div>
               {(() => {
                 const query = cookieSearch.trim().toLowerCase();
+                const byOrderType =
+                  orderState.orderType === "hampers"
+                    ? COOKIE_PRODUCTS.filter((p) => p.orderType === "hampers" || !p.orderType)
+                    : COOKIE_PRODUCTS.filter((p) => !p.orderType);
                 const filteredProducts = query
-                  ? COOKIE_PRODUCTS.filter((p) =>
-                    p.name.toLowerCase().includes(query)
-                  )
-                  : COOKIE_PRODUCTS;
+                  ? byOrderType.filter((p) => p.name.toLowerCase().includes(query))
+                  : byOrderType;
                 return filteredProducts.length > 0 ? (
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                     {filteredProducts.map((product) => (
@@ -500,8 +503,8 @@ function OrderFormContent() {
             ) : (
               <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-8 text-center">
                 <p className="text-sm text-gray-500 sm:text-base">
-                Tidak ada kue yang ditambahkan. Tap &quot;Tambahkan ke Pesanan&quot; di atas untuk memulai.
-                
+                  Tidak ada kue yang ditambahkan. Tap &quot;Tambahkan ke Pesanan&quot; di atas untuk memulai.
+
                 </p>
               </div>
             )}
@@ -532,7 +535,7 @@ function OrderFormContent() {
               // Track gift if not "Try Again"
               if (prize.label !== "Try Again") {
                 setGiftsWon((prev) => [...prev, prize.label]);
-                
+
                 if (GOOGLE_SHEET_ID) {
                   try {
                     const row = buildSpinResultRow({
@@ -557,11 +560,25 @@ function OrderFormContent() {
             }}
             onClose={async () => {
               setShowSpinWheel(false);
-              
+              // Update order spin status: spinsUsed and spinCompleted
+              if (spinOrderInfo && GOOGLE_SHEET_ID) {
+                const spinsUsed = spinOrderInfo.initialChances - spinsRemaining;
+                const spinCompleted = spinsUsed > 0 ? "Ya" : "Skipped";
+                try {
+                  await fetch(`/api/orders/${spinOrderInfo.orderId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ spinsUsed, spinCompleted }),
+                  });
+                } catch (err) {
+                  console.error("Failed to update spin status:", err);
+                }
+              }
+
               // Send Telegram notification after spin wheel closes (if order was successfully submitted)
-              // This ensures gifts are included in the notification
               if (submitSucceeded) {
                 try {
+                  const spinsUsedVal = spinOrderInfo ? spinOrderInfo.initialChances - spinsRemaining : undefined;
                   const orderData = {
                     orderId: orderState.orderId,
                     orderDate: orderState.orderDate,
@@ -578,6 +595,8 @@ function OrderFormContent() {
                   const telegramMessage = buildTelegramOrderMessage({
                     ...orderData,
                     gifts: giftsWon,
+                    spinsUsed: typeof spinsUsedVal === "number" ? spinsUsedVal : undefined,
+                    spinsRemaining: typeof spinsRemaining === "number" ? spinsRemaining : undefined,
                   });
                   await fetch("/api/telegram/send", {
                     method: "POST",
@@ -588,9 +607,13 @@ function OrderFormContent() {
                   console.error("Failed to send Telegram notification:", telegramErr);
                 }
               }
-              
+
+              const orderIdForThanks = orderState.orderId;
+              const spinsUsedForThanks = spinOrderInfo ? spinOrderInfo.initialChances - spinsRemaining : 0;
+              const spinCompletedForThanks = spinsUsedForThanks > 0 ? "Ya" : "Skipped";
               setSpinOrderInfo(null);
-              router.push(`/order/thanks?orderId=${orderState.orderId}`);
+              debugger;
+              window.location.href = (`/order/thanks?orderId=${orderIdForThanks}&spinCompleted=${spinCompletedForThanks}`);
             }}
           />
         )}

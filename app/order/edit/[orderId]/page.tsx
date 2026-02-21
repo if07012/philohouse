@@ -119,6 +119,7 @@ export default function EditOrderPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<{ src: string; alt: string } | null>(null);
+  const [spinCompleted, setSpinCompleted] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadOrder() {
@@ -130,6 +131,8 @@ export default function EditOrderPage() {
           return;
         }
         const { order, cookieDetails } = await res.json();
+
+        setSpinCompleted(order['Spin Completed'] ?? null);
 
         // Parse order type
         const orderType = order['Order Type']?.includes('Hampers') ? 'hampers' : 'single';
@@ -412,6 +415,33 @@ export default function EditOrderPage() {
     );
   }
 
+  if (spinCompleted === "Ya") {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+        <div className="max-w-md w-full rounded-2xl bg-white p-8 shadow-lg text-center">
+          <h1 className="text-2xl font-bold text-dark-blue mb-4">Pesanan Tidak Dapat Diedit</h1>
+          <p className="text-gray-600 mb-6">
+            Pesanan ini tidak dapat diedit karena Anda sudah menggunakan spin hadiah. Jika ada perubahan, silakan hubungi kami via WhatsApp.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={() => router.push(`/order/thanks?orderId=${orderId}`)}
+              className="block w-full min-h-[48px] rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90"
+            >
+              Lihat Detail Pesanan
+            </button>
+            <button
+              onClick={() => router.push("/order")}
+              className="block w-full min-h-[48px] rounded-xl border border-gray-300 px-8 py-4 text-base font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Buat Pesanan Baru
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 pb-24 sm:pb-8">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -466,11 +496,13 @@ export default function EditOrderPage() {
             </div>
             {(() => {
               const query = cookieSearch.trim().toLowerCase();
+              const byOrderType =
+                orderState.orderType === "hampers"
+                  ? COOKIE_PRODUCTS.filter((p) => p.orderType === "hampers" || !p.orderType)
+                  : COOKIE_PRODUCTS.filter((p) => !p.orderType);
               const filteredProducts = query
-                ? COOKIE_PRODUCTS.filter((p) =>
-                  p.name.toLowerCase().includes(query)
-                )
-                : COOKIE_PRODUCTS;
+                ? byOrderType.filter((p) => p.name.toLowerCase().includes(query))
+                : byOrderType;
               return filteredProducts.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {filteredProducts.map((product) => (

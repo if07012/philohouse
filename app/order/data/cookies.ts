@@ -78,12 +78,6 @@ export function buildWhatsAppOrderMessage(order: {
   );
   msg += `\n*Total: Rp ${order.total.toLocaleString("id-ID")}*`;
   
-  // Add edit order link
-  const baseUrl = getBaseUrl();
-  const salesParam = order.customer.sales ? `?sales=${encodeURIComponent(order.customer.sales)}` : "";
-  const editLink = `${baseUrl}/order/edit/${order.orderId}${salesParam}`;
-  msg += `\n\nEdit Pesanan: ${editLink}`;
-  
   return msg;
 }
 
@@ -98,6 +92,8 @@ function buildWhatsAppMessageText(order: {
   items: { name: string; size: string; quantity: number; subtotal: number }[];
   total: number;
   gifts?: string[];
+  spinsUsed?: number;
+  spinsRemaining?: number;
 }): string {
   const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
   const normalizedWhatsApp = normalizeWhatsAppNumber(order.customer.whatsapp);
@@ -115,6 +111,10 @@ function buildWhatsAppMessageText(order: {
   msg += `Alamat: ${order.customer.address}\n`;
   if (order.customer.sales?.trim()) {
     msg += `Sales: ${order.customer.sales}\n`;
+  }
+  if (typeof order.spinsUsed === "number" && typeof order.spinsRemaining === "number") {
+    msg += `Spin Terpakai: ${order.spinsUsed}\n`;
+    msg += `Sisa Spin: ${order.spinsRemaining}\n`;
   }
   if (order.customer.note?.trim()) {
     msg += `Catatan: ${order.customer.note}\n`;
@@ -135,12 +135,6 @@ function buildWhatsAppMessageText(order: {
       msg += `${index + 1}. ${gift}\n`;
     });
   }
-  
-  // Add edit order link
-  const baseUrl = getBaseUrl();
-  const salesParam = order.customer.sales ? `?sales=${encodeURIComponent(order.customer.sales)}` : "";
-  const editLink = `${baseUrl}/order/edit/${order.orderId}${salesParam}`;
-  msg += `\n\nEdit Pesanan: ${editLink}`;
   
   return msg;
 }
@@ -418,7 +412,6 @@ function buildWhatsAppOrderUpdateMessage(
   const baseUrl = getBaseUrl();
   const salesParam = newOrder.customer.sales ? `?sales=${encodeURIComponent(newOrder.customer.sales)}` : "";
   const editLink = `${baseUrl}/order/edit/${orderId}${salesParam}`;
-  msg += `\n\nEdit Pesanan: ${editLink}`;
   
   return msg;
 }
@@ -431,6 +424,8 @@ export function buildTelegramOrderMessage(order: {
   items: { name: string; size: string; quantity: number; subtotal: number }[];
   total: number;
   gifts?: string[];
+  spinsUsed?: number;
+  spinsRemaining?: number;
 }): string {
   const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
   const normalizedWhatsApp = normalizeWhatsAppNumber(order.customer.whatsapp);
@@ -449,6 +444,10 @@ export function buildTelegramOrderMessage(order: {
   if (order.customer.sales?.trim()) {
     msg += `Sales: ${order.customer.sales}\n`;
   }
+  if (typeof order.spinsUsed === "number" && typeof order.spinsRemaining === "number") {
+    msg += `Spin Terpakai: ${order.spinsUsed}\n`;
+    msg += `Sisa Spin: ${order.spinsRemaining}\n`;
+  }
   if (order.customer.note?.trim()) {
     msg += `Catatan: ${order.customer.note}\n`;
   }
@@ -466,7 +465,7 @@ export function buildTelegramOrderMessage(order: {
   if (order.gifts && order.gifts.length > 0) {
     msg += `\n<b>Hadiah yang Dimenangkan</b>\n`;
     order.gifts.forEach((gift, index) => {
-      msg += `${index + 1}. ${gift}\n`;
+      msg += `${index + 1}. ${gift.replace(/<br\s*\/>/g, "\n")}\n`;
     });
   }
   
@@ -487,7 +486,7 @@ export function buildSheetRow(order: {
   orderType: string;
   items: { name: string; size: string; quantity: number; subtotal: number }[];
   total: number;
-}): Record<string, string | number> {
+}, spinFields?: { eligibleForGift: "Ya" | "Tidak"; spinsUsed: number; spinCompleted: "Ya" | "Tidak" | "Skipped" }): Record<string, string | number> {
   const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
   const itemsStr = order.items
     .map(
@@ -495,8 +494,10 @@ export function buildSheetRow(order: {
         `${i.name} ${i.size} x ${i.quantity} = Rp ${i.subtotal.toLocaleString("id-ID")}`
     )
     .join(" | ");
-  // Normalize WhatsApp number: replace 0 with +62
   const normalizedWhatsApp = normalizeWhatsAppNumber(order.customer.whatsapp);
+  const eligibleForGift = spinFields?.eligibleForGift ?? (getSpinChances(order.total) >= 1 ? "Ya" : "Tidak");
+  const spinsUsed = spinFields?.spinsUsed ?? 0;
+  const spinCompleted = spinFields?.spinCompleted ?? "Tidak";
   return {
     "Order ID": order.orderId,
     "Order Date": order.orderDate,
@@ -508,6 +509,9 @@ export function buildSheetRow(order: {
     "Order Type": typeLabel,
     Items: itemsStr,
     Total: order.total,
+    "Eligible for Gift": eligibleForGift,
+    "Spins Used": spinsUsed,
+    "Spin Completed": spinCompleted,
   };
 }
 
@@ -528,7 +532,7 @@ export function buildCookieDetailRows(order: {
 }
 
 /** Spin wheel: every Rp 500,000 = 1 spin chance */
-export const SPIN_THRESHOLD = 100_000;
+export const SPIN_THRESHOLD = 500_000;
 
 export function getSpinChances(total: number): number {
   return Math.floor(total / SPIN_THRESHOLD);
@@ -740,6 +744,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers1",
     name: "Hampers 1",
+    orderType:"hampers",
     image: "/cookies/hampers1.jpeg",
     basePrice: 6000,
     sizePrices: {
@@ -749,6 +754,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers2",
     name: "Hampers 2",
+    orderType:"hampers",
     image: "/cookies/hampers2.jpeg",
     basePrice: 9000,
     sizePrices: {
@@ -758,6 +764,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers3",
     name: "Hampers 3",
+    orderType:"hampers",
     image: "/cookies/hampers3.jpeg",
     basePrice: 19000,
     sizePrices: {
@@ -767,6 +774,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers4",
     name: "Hampers 4",
+    orderType:"hampers",
     image: "/cookies/hampers4.jpeg",
     basePrice: 16000,
     sizePrices: {
@@ -776,6 +784,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers5",
     name: "Hampers 5",
+    orderType:"hampers",
     image: "/cookies/hampers5.jpeg",
     basePrice: 3500,
     sizePrices: {

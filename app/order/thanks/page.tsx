@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { getSpinChances } from "../data/cookies";
 
 function OrderThanksContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
-  
-  // Get sales ID from localStorage to include in links
+  const [spinCompleted, setSpinCompleted] = useState<"Ya" | "Tidak" | "Skipped">("Tidak");
+  const [continueSpin, setContinueSpin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   const getSalesParam = () => {
     if (typeof window !== "undefined") {
       const salesId = localStorage.getItem("cookie_order_sales_id");
@@ -16,9 +19,41 @@ function OrderThanksContent() {
     }
     return "";
   };
-  
+
+  useEffect(() => {
+    async function loadOrder() {
+      try {
+        const res = await fetch(`/api/orders/${orderId}`);
+        if (!res.ok) {
+          const data = await res.json();
+          return;
+        }
+        const { order: orderData } = await res.json();
+        const used = Number(orderData["Spins Used"]) || 0;
+        setSpinCompleted(orderData["Spin Completed"] ?? "Tidak");
+        const total = parseFloat(orderData["Total"]) || 0;
+        const totalSpins = getSpinChances(total);
+        const remaining = Math.max(0, totalSpins - used);
+
+        if (remaining > 0 && orderData["Spin Completed"] != "Ya") {
+          setContinueSpin(true);
+        }
+      } catch (err) {
+        console.error("Error loading order:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (orderId) {
+      loadOrder();
+    }
+  }, [orderId]);
+
+
   const salesParam = getSalesParam();
   const editLink = orderId ? `/order/edit/${orderId}${salesParam}` : "";
+  const spinLink = orderId ? `/order/spin/${orderId}` : "";
   const newOrderLink = `/order${salesParam}`;
 
   return (
@@ -40,38 +75,48 @@ function OrderThanksContent() {
           </svg>
         </div>
         <h1 className="text-2xl font-bold text-dark-blue sm:text-3xl">
-          Thank you for your order!
+          Terima kasih atas pesanan Anda!
         </h1>
         <p className="mt-3 text-gray-600">
-          Your order has been submitted successfully. We&apos;ll get back to you
-          shortly via WhatsApp.
+          Pesanan Anda telah berhasil dikirim. Kami akan segera menghubungi Anda
+          melalui WhatsApp.
         </p>
         {orderId && (
           <p className="mt-2 text-xs text-gray-500">
-            Order ID: {orderId}
+            ID Pesanan: {orderId}
           </p>
         )}
-        <div className="mt-6 space-y-3">
-          {orderId && (
+        {!isLoading && (
+          <div className="mt-6 space-y-3">
+            {((spinCompleted != "Ya") || continueSpin) && (
+              <Link
+                href={spinLink}
+                className="block min-h-[48px] rounded-xl bg-accent-yellow px-8 py-4 text-base font-semibold text-dark-blue shadow-md transition-all hover:bg-accent-yellow/90 hover:shadow-lg"
+              >
+                Spin Hadiah Sekarang
+              </Link>
+            )}
+            {orderId && !(spinCompleted || continueSpin) && (
+              <Link
+                href={editLink}
+                className="block min-h-[48px] rounded-xl bg-dark-blue px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-dark-blue/90 hover:shadow-lg"
+              >
+                Edit Pesanan
+              </Link>
+            )}
             <Link
-              href={editLink}
-              className="block min-h-[48px] rounded-xl bg-dark-blue px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-dark-blue/90 hover:shadow-lg"
+              href={newOrderLink}
+              className="block min-h-[48px] rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg"
             >
-              Edit Order
+              Buat Pesanan Baru
             </Link>
-          )}
-          <Link
-            href={newOrderLink}
-            className="block min-h-[48px] rounded-xl bg-primary-pink px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 hover:shadow-lg"
-          >
-            Place another order
-          </Link>
-        </div>
+          </div>
+        )}
         <Link
           href="/"
           className="mt-3 block text-sm font-medium text-primary-pink hover:underline"
         >
-          Back to home
+          Kembali ke beranda
         </Link>
       </div>
     </div>
