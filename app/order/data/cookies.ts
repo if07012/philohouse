@@ -619,8 +619,8 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
     },
   },
   {
-    id: "choco-nuteball",
-    name: "Choco Nuteball",
+    id: "choco-nutball",
+    name: "Choco Nutball",
     image: "/cookies/choco_nutball.jpeg",
     basePrice: 60000,
     sizePrices: {
@@ -662,7 +662,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   },
   {
     id: "putri-salju-mede",
-    name: "Putri Saljut Mede",
+    name: "Putri Salju Mede",
     image: "/cookies/putri-salju.jpeg",
     basePrice: 60000,
     sizePrices: {
@@ -683,8 +683,8 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
     },
   },
   {
-    id: "chocolate-pistacio",
-    name: "Chocolate Pistacio",
+    id: "chocolate-pistachio",
+    name: "Chocolate Pistachio",
     image: "/cookies/coklat-pistacio.jpeg",
     basePrice: 70000,
     sizePrices: {
@@ -717,7 +717,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   },
   {
     id: "kue-abon-bawang",
-    name: "Kue Abon Bawan",
+    name: "Kue Abon Bawang",
     image: "/cookies/kue_abon_bawang.jpeg",
     basePrice: 50000,
     sizePrices: {
