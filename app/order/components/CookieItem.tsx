@@ -91,8 +91,8 @@ export default function CookieItem({
               </svg>
             </button>
           </div>
-          <div className="flex flex-wrap gap-3 sm:gap-4">
-            <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap gap-4">
+            <div style={{ width: "75%" }} className="flex-1">
               <label className="block text-xs font-medium text-gray-500">
                 Size
               </label>
@@ -111,14 +111,15 @@ export default function CookieItem({
                 ))}
               </select>
             </div>
-            <div>
+            <div style={{ width: "25%" }}>
               <label className="block text-xs font-medium text-gray-500">
                 Quantity
               </label>
               <input
+                style={{ width: "100%" }}
                 value={isEmpty ? '' : item.quantity}
                 onChange={(e) => handleQuantityChange(e.target.value)}
-                className="mt-1 min-h-[44px] min-w-[72px] rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
+                className="mt-1 min-h-[44px] rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-primary-pink focus:outline-none focus:ring-2 focus:ring-primary-pink/30 sm:text-sm"
               />
             </div>
           </div>
