@@ -642,6 +642,7 @@ function OrderFormContent() {
             }}
             onClose={async () => {
               setShowSpinWheel(false);
+              setIsSubmitting(true);
               // Update order spin status: spinsUsed and spinCompleted
               if (spinOrderInfo && GOOGLE_SHEET_ID) {
                 const spinsUsed = spinOrderInfo.initialChances - spinsRemaining;
@@ -694,6 +695,7 @@ function OrderFormContent() {
               const spinsUsedForThanks = spinOrderInfo ? spinOrderInfo.initialChances - spinsRemaining : 0;
               const spinCompletedForThanks = spinsUsedForThanks > 0 ? "Ya" : "Skipped";
               setSpinOrderInfo(null);
+              setIsSubmitting(false);
               window.location.href = (`/order/thanks?orderId=${orderIdForThanks}&spinCompleted=${spinCompletedForThanks}`);
             }}
           />
