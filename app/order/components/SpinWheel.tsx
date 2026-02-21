@@ -78,7 +78,7 @@ export default function SpinWheel({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative w-full rounded-2xl bg-white p-6 shadow-xl">
+      <div className="relative w-full sm:w-96 rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 text-center">
           <h3 className="text-xl font-bold text-dark-blue">
             Spin to Win
@@ -88,7 +88,7 @@ export default function SpinWheel({
           </p>
         </div>
 
-        <div className="relative aspect-square w-full">
+        <div className="relative mx-auto aspect-square w-64 sm:w-96">
           <div
             className="absolute inset-0 z-10 flex items-start justify-center"
             style={{ transform: "translateY(-8px)" }}
@@ -112,26 +112,33 @@ export default function SpinWheel({
             >
               {prizes.map((prize, i) => {
                 const segmentCenterDeg = (i + 0.5) * segmentAngle;
-                const angle = segmentCenterDeg;
-                const rad = (angle * Math.PI) / 180;
-                const r = 38;
-                const x = 50 + r * Math.cos(rad);
-                const y = 50 + r * Math.sin(rad);
+                const angle = (segmentCenterDeg - 90) * (Math.PI / 180);
+                const r = 30;
+                const x = 50 + r * Math.cos(angle);
+                const y = 50 + r * Math.sin(angle);
+                const halfChord = 100 * Math.sin((segmentAngle * Math.PI) / 360);
+                const maxW = Math.min(28, Math.max(20, halfChord * 0.9));
                 return (
                   <span
                     key={prize.id}
-                    className="absolute text-[10px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] sm:text-xs"
+                    className="absolute font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] line-clamp-2 text-center text-[8px] leading-tight sm:text-[9px]"
                     style={{
                       left: `${x}%`,
                       top: `${y}%`,
-                      transform: `translate(-50%, -50%) rotate(${segmentCenterDeg}deg)`,
-                      whiteSpace: "nowrap",
+                      width: `${maxW}%`,
+                      maxWidth: `${maxW}%`,
+                      transform: "translate(-50%, -50%)",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical" as const,
                     }}
                     dangerouslySetInnerHTML={{
                       __html: prize.label
                     }}
                   />
-
                 );
               })}
             </div>
@@ -147,7 +154,7 @@ export default function SpinWheel({
               <p className="text-sm font-medium text-gray-600">
                 Congratulations! You won:
               </p>
-              <div className="mt-1 text-lg font-bold text-dark-blue" dangerouslySetInnerHTML={{ __html: wonPrize.label }}>
+              <div className="mt-1 text-lg font-bold text-dark-blue" dangerouslySetInnerHTML={{ __html: wonPrize.label.replace(/<br\s*\/>/g, "\n") }}>
 
               </div>
             </div>

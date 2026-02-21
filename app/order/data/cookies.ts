@@ -553,10 +553,10 @@ export function buildSpinResultRow(data: {
 
 export const SPIN_PRIZES: SpinPrize[] = [
   { id: "d5", label: "5% Off", type: "discount", value: "5%" },
-  { id: "d5n", label: "5% Off <br/> for Next order", type: "discount", value: "5%" },
+  { id: "d5n", label: "5% Off <br/> for Next <br/>order", type: "discount", value: "5%" },
   { id: "cookie1", label: "Free Cookie 400ml", type: "cookie", value: "Any 400ml" },
-  { id: "brownies", label: "Brownies Slice Mini", type: "cookie", value: "Brownies Slice Mini" },
-  { id: "d10n", label: "10% Off <br/>for Next order", type: "discount", value: "10%" },
+  { id: "brownies", label: "Brownies <br/> Slice Mini", type: "cookie", value: "Brownies Slice Mini" },
+  { id: "d10n", label: "10% Off <br/>for Next <br/>order", type: "discount", value: "10%" },
   { id: "d51", label: "5% Off", type: "discount", value: "5%" },
   { id: "ongkir", label: "Gratis Ongkir", type: "discount", value: "Gratis Ongkir" },
   { id: "cookie2", label: "Free Cookie 400ml", type: "cookie", value: "Any 400ml" },
