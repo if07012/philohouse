@@ -41,7 +41,6 @@ function createOrderItem(
   let price = product.sizePrices[size];
   if (!price)
     price = product.sizePrices["Satuan"]
-  debugger
   const subtotal = price * quantity;
   return {
     id: `${product.id}-${size}-${Date.now()}`,
@@ -99,6 +98,7 @@ function OrderFormContent() {
   const [submitSucceeded, setSubmitSucceeded] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<{ src: string; alt: string } | null>(null);
   const [giftsWon, setGiftsWon] = useState<string[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const router = useRouter();
 
   // Update sales if query parameter changes
@@ -237,9 +237,14 @@ function OrderFormContent() {
     return true;
   }, [orderState.customer, orderState.items.length]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    setShowConfirmModal(true);
+  };
+
+  const doSave = async () => {
+    setShowConfirmModal(false);
     setIsSubmitting(true);
     const total = orderState.items.reduce((s, i) => s + i.subtotal, 0);
     const orderData = {
@@ -309,8 +314,6 @@ function OrderFormContent() {
             const err = await detailsRes.json().catch(() => ({}));
             console.error("Google Sheet (Cookie Details) write failed:", err);
           } else {
-            // Send Telegram notification after successful save (only if spin wheel won't be shown)
-            // If spin wheel will be shown, notification will be sent after it closes
             if (!willShowSpin) {
               try {
                 const telegramMessage = buildTelegramOrderMessage({
@@ -324,7 +327,6 @@ function OrderFormContent() {
                 });
               } catch (telegramErr) {
                 console.error("Failed to send Telegram notification:", telegramErr);
-                // Don't fail the order submission if Telegram fails
               }
               window.location.href = (`/order/thanks?orderId=${orderState.orderId}`);
             }
@@ -336,6 +338,7 @@ function OrderFormContent() {
       alert("Order saved to WhatsApp, but failed to save to Google Sheet.");
       submittedSuccessfully = false;
     } finally {
+      setIsSubmitting(false);
       if (submittedSuccessfully) setSubmitSucceeded(true);
     }
   };
@@ -526,6 +529,85 @@ function OrderFormContent() {
           </form>
         </div>
 
+        {/* Confirmation modal with order preview */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+            <div
+              className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 sm:px-6">
+                <h3 className="text-lg font-bold text-dark-blue">Konfirmasi Pesanan</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Periksa detail pesanan sebelum menyimpan</p>
+              </div>
+              <div className="p-4 sm:p-6 space-y-4">
+                <section>
+                  <h4 className="text-sm font-semibold text-dark-blue mb-2">Informasi Pesanan</h4>
+                  <div className="rounded-lg bg-gray-50 p-3 text-sm space-y-1">
+                    <p><span className="text-gray-500">ID:</span> {orderState.orderId}</p>
+                    <p><span className="text-gray-500">Tanggal:</span> {orderState.orderDate}</p>
+                    <p><span className="text-gray-500">Tipe:</span> {orderState.orderType === "single" ? "Single (Satuan)" : "Hampers"}</p>
+                  </div>
+                </section>
+                <section>
+                  <h4 className="text-sm font-semibold text-dark-blue mb-2">Pelanggan</h4>
+                  <div className="rounded-lg bg-gray-50 p-3 text-sm space-y-1">
+                    <p><span className="text-gray-500">Nama:</span> {orderState.customer.name}</p>
+                    <p><span className="text-gray-500">WhatsApp:</span> {orderState.customer.whatsapp}</p>
+                    <p><span className="text-gray-500">Alamat:</span> {orderState.customer.address}</p>
+                    {orderState.customer.sales?.trim() && (
+                      <p><span className="text-gray-500">Sales:</span> {orderState.customer.sales}</p>
+                    )}
+                    {orderState.customer.note?.trim() && (
+                      <p><span className="text-gray-500">Catatan:</span> {orderState.customer.note}</p>
+                    )}
+                  </div>
+                </section>
+                <section>
+                  <h4 className="text-sm font-semibold text-dark-blue mb-2">Detail Kue ({orderState.items.length} item)</h4>
+                  <div className="rounded-lg bg-gray-50 p-3 space-y-2 max-h-48 overflow-y-auto">
+                    {orderState.items.map((item) => (
+                      <div key={item.id} className="flex justify-between items-center text-sm">
+                        <span>{item.name} {item.size} x{item.quantity}</span>
+                        <span className="font-medium tabular-nums">Rp {item.subtotal.toLocaleString("id-ID")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+                <section className="rounded-xl bg-dark-blue p-4 text-white">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total</span>
+                    <span className="text-lg font-bold text-accent-yellow tabular-nums">
+                      Rp {orderState.total.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                  {getSpinChances(orderState.total) >= 1 && (
+                    <p className="text-xs text-white/80 mt-2">
+                      Anda mendapat {getSpinChances(orderState.total)} spin hadiah setelah pesanan tersimpan
+                    </p>
+                  )}
+                </section>
+              </div>
+              <div className="sticky bottom-0 border-t border-gray-200 bg-white p-4 sm:p-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 min-h-[48px] rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={doSave}
+                  className="flex-1 min-h-[48px] rounded-xl bg-primary-pink px-4 py-3 font-semibold text-white hover:bg-primary-pink/90"
+                >
+                  Konfirmasi Pesanan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showSpinWheel && spinOrderInfo && (
           <SpinWheel
             prizes={SPIN_PRIZES}
@@ -612,7 +694,6 @@ function OrderFormContent() {
               const spinsUsedForThanks = spinOrderInfo ? spinOrderInfo.initialChances - spinsRemaining : 0;
               const spinCompletedForThanks = spinsUsedForThanks > 0 ? "Ya" : "Skipped";
               setSpinOrderInfo(null);
-              debugger;
               window.location.href = (`/order/thanks?orderId=${orderIdForThanks}&spinCompleted=${spinCompletedForThanks}`);
             }}
           />

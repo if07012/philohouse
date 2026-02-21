@@ -112,10 +112,7 @@ function buildWhatsAppMessageText(order: {
   if (order.customer.sales?.trim()) {
     msg += `Sales: ${order.customer.sales}\n`;
   }
-  if (typeof order.spinsUsed === "number" && typeof order.spinsRemaining === "number") {
-    msg += `Spin Terpakai: ${order.spinsUsed}\n`;
-    msg += `Sisa Spin: ${order.spinsRemaining}\n`;
-  }
+ 
   if (order.customer.note?.trim()) {
     msg += `Catatan: ${order.customer.note}\n`;
   }
@@ -444,10 +441,6 @@ export function buildTelegramOrderMessage(order: {
   if (order.customer.sales?.trim()) {
     msg += `Sales: ${order.customer.sales}\n`;
   }
-  if (typeof order.spinsUsed === "number" && typeof order.spinsRemaining === "number") {
-    msg += `Spin Terpakai: ${order.spinsUsed}\n`;
-    msg += `Sisa Spin: ${order.spinsRemaining}\n`;
-  }
   if (order.customer.note?.trim()) {
     msg += `Catatan: ${order.customer.note}\n`;
   }
@@ -564,7 +557,10 @@ export const SPIN_PRIZES: SpinPrize[] = [
   { id: "cookie1", label: "Free Cookie 400ml", type: "cookie", value: "Any 400ml" },
   { id: "brownies", label: "Brownies Slice Mini", type: "cookie", value: "Brownies Slice Mini" },
   { id: "d10n", label: "10% Off <br/>for Next order", type: "discount", value: "10%" },
+  { id: "d51", label: "5% Off", type: "discount", value: "5%" },
   { id: "ongkir", label: "Gratis Ongkir", type: "discount", value: "Gratis Ongkir" },
+  { id: "cookie2", label: "Free Cookie 400ml", type: "cookie", value: "Any 400ml" },
+
 ];
 
 export const SIZE_OPTIONS: SizeOption[] = ["400ml", "600ml", "800ml", "Satuan"];
