@@ -51,18 +51,15 @@ export default function SpinWheel({
     const winIndex = Math.floor(Math.random() * prizes.length);
     const prize = prizes[winIndex];
     const segmentCenter = winIndex * segmentAngle + segmentAngle / 2;
-    const targetRotation = 360 * 5 + (360 - segmentCenter);
+    // Account for current rotation so the winning segment lands under the arrow on 2nd+ spin
+    const rotationMod = ((rotation % 360) + 360) % 360;
+    const delta = (360 - rotationMod - segmentCenter + 360) % 360;
+    const targetRotation = 360 * 5 + delta;
     const newRotation = rotation + targetRotation;
 
     setRotation(newRotation);
 
     const duration = 4000;
-    const wheel = document.getElementById("spin-wheel-inner");
-    if (wheel) {
-      wheel.style.transition = `transform ${duration}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
-      wheel.style.transform = `rotate(${newRotation}deg)`;
-    }
-
     setTimeout(() => {
       setIsSpinning(false);
       setWonPrize(prize);
@@ -81,7 +78,7 @@ export default function SpinWheel({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative w-full sm:w-96 rounded-2xl bg-white p-6 shadow-xl">
+      <div className="relative w-full rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 text-center">
           <h3 className="text-xl font-bold text-dark-blue">
             Spin to Win
@@ -91,7 +88,7 @@ export default function SpinWheel({
           </p>
         </div>
 
-        <div className="relative mx-auto aspect-square w-64 sm:w-96">
+        <div className="relative aspect-square w-full">
           <div
             className="absolute inset-0 z-10 flex items-start justify-center"
             style={{ transform: "translateY(-8px)" }}
@@ -107,12 +104,15 @@ export default function SpinWheel({
               className="relative h-full w-full rounded-full"
               style={{
                 transform: `rotate(${rotation}deg)`,
-                transition: "none",
+                transition: isSpinning
+                  ? "transform 4000ms cubic-bezier(0.2, 0.8, 0.2, 1)"
+                  : "none",
                 background: conicGradient,
               }}
             >
               {prizes.map((prize, i) => {
-                const angle = (i + 0.5) * segmentAngle - 90;
+                const segmentCenterDeg = (i + 0.5) * segmentAngle;
+                const angle = segmentCenterDeg;
                 const rad = (angle * Math.PI) / 180;
                 const r = 38;
                 const x = 50 + r * Math.cos(rad);
@@ -124,15 +124,14 @@ export default function SpinWheel({
                     style={{
                       left: `${x}%`,
                       top: `${y}%`,
-                      transform: "translate(-50%, -50%)",
+                      transform: `translate(-50%, -50%) rotate(${segmentCenterDeg}deg)`,
                       whiteSpace: "nowrap",
                     }}
                     dangerouslySetInnerHTML={{
                       __html: prize.label
                     }}
-                  >
+                  />
 
-                  </span>
                 );
               })}
             </div>
