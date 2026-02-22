@@ -40,9 +40,22 @@ export async function GET(
     const cookieDetails = await readSheetData(GOOGLE_SHEET_ID, 'Cookie Details');
     const orderCookieDetails = cookieDetails.filter((c: any) => c['Order ID'] === orderId);
 
+    // Read spin rewards (gifts) if available
+    let gifts: string[] = [];
+    try {
+      const spinRows = await readSheetData(GOOGLE_SHEET_ID, 'Spin Rewards');
+      const orderGifts = spinRows.filter((r: any) => r['Order ID'] === orderId);
+      gifts = orderGifts.map((g: any) => g['Gift'] || g.Gift).filter(Boolean);
+    } catch (err) {
+      // If sheet doesn't exist or error occurs, ignore and continue without gifts
+      console.error('Could not read Spin Rewards sheet:', err);
+      gifts = [];
+    }
+
     return NextResponse.json({
       order,
       cookieDetails: orderCookieDetails,
+      gifts,
     });
   } catch (error) {
     console.error('Error fetching order:', error);

@@ -30,9 +30,15 @@ export default function LoginPage() {
         return;
       }
 
-      // Store auth in sessionStorage
+      // Store auth and role in sessionStorage
       sessionStorage.setItem("orders_list_authenticated", "true");
       sessionStorage.setItem("orders_list_username", username);
+      if (data.role) {
+        sessionStorage.setItem("orders_list_role", data.role);
+      }
+      if (data.salesId) {
+        sessionStorage.setItem("orders_list_sales", data.salesId);
+      }
 
       // Redirect to orders list
       router.push("/order/list");

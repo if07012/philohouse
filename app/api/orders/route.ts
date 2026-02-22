@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { readSheetData } from '../../lib/googleSheets';
 import { GOOGLE_SHEET_ID } from '../../order/data/cookies';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     if (!GOOGLE_SHEET_ID) {
       return NextResponse.json(
@@ -32,6 +32,29 @@ export async function GET() {
       ...order,
       cookieDetails: cookieDetailsByOrderId[order['Order ID']] || [],
     }));
+
+    // If request contains role/sales header, apply Sales filtering
+    try {
+      const role = request.headers.get('x-orders-role') || '';
+      const salesId = request.headers.get('x-orders-sales') || '';
+      if (role === 'sales' && salesId) {
+        // Filter orders where the Sales field (or customer.sales) matches the salesId
+        const filtered = ordersWithDetails.filter((order: any) => {
+          const salesField = (
+            order['Sales'] || order.Sales || (order.customer && order.customer.sales) || ''
+          ).toString();
+          return salesField === salesId;
+        });
+        // replace ordersWithDetails with filtered result
+        // also preserve sorting below
+        // reassign variable by mutating array reference
+        ordersWithDetails.length = 0;
+        filtered.forEach((o: any) => ordersWithDetails.push(o));
+      }
+    } catch (e) {
+      // ignore header parsing errors and continue without filtering
+      console.error('Error applying sales filter:', e);
+    }
 
     // Sort by Order Date descending (newest first)
     ordersWithDetails.sort((a: any, b: any) => {

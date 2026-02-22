@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { buildTelegramOrderMessage } from "../data/cookies";
 
 interface Order {
   "Order ID": string;
@@ -21,7 +22,10 @@ interface Order {
     Subtotal: number;
   }>;
 }
-
+// Client-side env vars must be prefixed with NEXT_PUBLIC_ to be exposed to the browser
+const WHATSAPP_NUMBER: Record<string, string | undefined> = {
+  "Cindy": process.env.NEXT_PUBLIC_SALES_WA,
+};
 export default function OrdersListPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -47,7 +51,18 @@ export default function OrdersListPage() {
 
     async function fetchOrders() {
       try {
-        const res = await fetch("/api/orders");
+        // Send username/role/sales from sessionStorage so the server can filter for sales users
+        const username = sessionStorage.getItem("orders_list_username") || "";
+        const role = sessionStorage.getItem("orders_list_role") || "";
+        const salesId = sessionStorage.getItem("orders_list_sales") || "";
+
+        const res = await fetch("/api/orders", {
+          headers: {
+            "x-orders-username": username,
+            "x-orders-role": role,
+            "x-orders-sales": salesId,
+          },
+        });
         if (!res.ok) {
           const data = await res.json();
           setError(data.error || "Failed to load orders");
@@ -69,7 +84,71 @@ export default function OrdersListPage() {
   const handleLogout = () => {
     sessionStorage.removeItem("orders_list_authenticated");
     sessionStorage.removeItem("orders_list_username");
+    sessionStorage.removeItem("orders_list_role");
+    sessionStorage.removeItem("orders_list_sales");
     router.push("/order/list/login");
+  };
+
+  const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
+
+  const sendOrderToTelegram = async (orderId: string) => {
+    try {
+      setSendingOrderId(orderId);
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to fetch order details");
+        return;
+      }
+      const data = await res.json();
+      const order = data.order;
+      const cookieDetails = data.cookieDetails || [];
+      const gifts: string[] = data.gifts || [];
+
+      const items = (cookieDetails || []).map((c: any) => ({
+        name: c['Cookie Name'] || c["Cookie Name"],
+        size: c.Size || c.Size || "",
+        quantity: Number(c.Quantity) || 0,
+        subtotal: Number(c.Subtotal) || 0,
+      }));
+
+      const orderPayload = {
+        orderId: order['Order ID'] || order["Order ID"],
+        orderDate: order['Order Date'] || order["Order Date"] || "",
+        customer: {
+          name: order['Customer Name'] || order["Customer Name"] || "",
+          whatsapp: order.WhatsApp || order.WhatsApp || "",
+          address: order.Address || order.Address || "",
+          note: order.Note || order.Note || "",
+          sales: order['Sales'] || order.Sales || "",
+        },
+        orderType: (order['Order Type'] || order['Order Type'] || "").toLowerCase().includes("single") ? "single" : "hampers",
+        items,
+        total: Number(order.Total) || 0,
+        gifts: gifts.length > 0 ? gifts : undefined,
+        salesWhatsapp: WHATSAPP_NUMBER[order['Sales'] || order.Sales || ""]
+      };
+
+      console.log("Order payload for Telegram:", orderPayload);
+      console.log("WhatsApp number for sales:", WHATSAPP_NUMBER);
+      const message = buildTelegramOrderMessage(orderPayload as any);
+      const sendRes = await fetch("/api/telegram/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      if (!sendRes.ok) {
+        const err = await sendRes.json().catch(() => ({}));
+        alert(err.error || "Failed to send Telegram message");
+      } else {
+        alert("Telegram message sent");
+      }
+    } catch (e) {
+      console.error("Error sending to Telegram:", e);
+      alert("Error sending to Telegram");
+    } finally {
+      setSendingOrderId(null);
+    }
   };
 
   const filteredOrders = orders.filter((order) => {
@@ -245,21 +324,19 @@ export default function OrdersListPage() {
         <div className="mb-4 flex gap-2">
           <button
             onClick={() => setViewMode("orders")}
-            className={`min-h-[44px] rounded-lg px-6 py-2 text-sm font-semibold transition-colors ${
-              viewMode === "orders"
+            className={`min-h-[44px] rounded-lg px-6 py-2 text-sm font-semibold transition-colors ${viewMode === "orders"
                 ? "bg-dark-blue text-white"
                 : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-            }`}
+              }`}
           >
             Order View
           </button>
           <button
             onClick={() => setViewMode("grouped")}
-            className={`min-h-[44px] rounded-lg px-6 py-2 text-sm font-semibold transition-colors ${
-              viewMode === "grouped"
+            className={`min-h-[44px] rounded-lg px-6 py-2 text-sm font-semibold transition-colors ${viewMode === "grouped"
                 ? "bg-dark-blue text-white"
                 : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-            }`}
+              }`}
           >
             Grouped View
           </button>
@@ -291,107 +368,114 @@ export default function OrdersListPage() {
               </p>
             </div>
           ) : (
-          <div className="space-y-4">
-            {filteredOrders.map((order) => (
-              <div
-                key={order["Order ID"]}
-                className="rounded-xl bg-white p-4 shadow-md sm:p-6"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-                  {/* Order Info */}
-                  <div className="flex-1 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <h2 className="text-lg font-semibold text-dark-blue">
-                          Order {order["Order ID"]}
-                        </h2>
-                        <p className="text-sm text-gray-500">
-                          {order["Order Date"]} • {order["Order Type"]}
-                        </p>
+            <div className="space-y-4">
+              {filteredOrders.map((order) => (
+                <div
+                  key={order["Order ID"]}
+                  className="rounded-xl bg-white p-4 shadow-md sm:p-6"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                    {/* Order Info */}
+                    <div className="flex-1 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                          <h2 className="text-lg font-semibold text-dark-blue">
+                            Order {order["Order ID"]}
+                          </h2>
+                          <p className="text-sm text-gray-500">
+                            {order["Order Date"]} • {order["Order Type"]}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-primary-pink">
+                            Rp {order.Total.toLocaleString("id-ID")}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-primary-pink">
-                          Rp {order.Total.toLocaleString("id-ID")}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-600">
-                          Customer:
-                        </span>{" "}
-                        <span className="text-gray-800">{order["Customer Name"]}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-600">
-                          WhatsApp:
-                        </span>{" "}
-                        <a
-                          href={`https://wa.me/${order.WhatsApp.replace(/[^0-9]/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary-pink hover:underline"
-                        >
-                          {order.WhatsApp}
-                        </a>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <span className="font-medium text-gray-600">
-                          Address:
-                        </span>{" "}
-                        <span className="text-gray-800">{order.Address}</span>
-                      </div>
-                      {order.Note && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-600">
+                            Customer:
+                          </span>{" "}
+                          <span className="text-gray-800">{order["Customer Name"]}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">
+                            WhatsApp:
+                          </span>{" "}
+                          <a
+                            href={`https://wa.me/${order.WhatsApp.replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary-pink hover:underline"
+                          >
+                            {order.WhatsApp}
+                          </a>
+                        </div>
                         <div className="sm:col-span-2">
                           <span className="font-medium text-gray-600">
-                            Note:
+                            Address:
                           </span>{" "}
-                          <span className="text-gray-800">{order.Note}</span>
+                          <span className="text-gray-800">{order.Address}</span>
+                        </div>
+                        {order.Note && (
+                          <div className="sm:col-span-2">
+                            <span className="font-medium text-gray-600">
+                              Note:
+                            </span>{" "}
+                            <span className="text-gray-800">{order.Note}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Cookie Details */}
+                      {order.cookieDetails && order.cookieDetails.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <h3 className="text-sm font-semibold text-dark-blue mb-2">
+                            Cookies Ordered:
+                          </h3>
+                          <div className="space-y-1">
+                            {order.cookieDetails.map((cookie, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between items-center text-sm"
+                              >
+                                <span className="text-gray-700">
+                                  {cookie["Cookie Name"]} ({cookie.Size}) ×{" "}
+                                  {cookie.Quantity}
+                                </span>
+                                <span className="font-medium text-gray-800">
+                                  Rp {cookie.Subtotal.toLocaleString("id-ID")}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Cookie Details */}
-                    {order.cookieDetails && order.cookieDetails.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <h3 className="text-sm font-semibold text-dark-blue mb-2">
-                          Cookies Ordered:
-                        </h3>
-                        <div className="space-y-1">
-                          {order.cookieDetails.map((cookie, idx) => (
-                            <div
-                              key={idx}
-                              className="flex justify-between items-center text-sm"
-                            >
-                              <span className="text-gray-700">
-                                {cookie["Cookie Name"]} ({cookie.Size}) ×{" "}
-                                {cookie.Quantity}
-                              </span>
-                              <span className="font-medium text-gray-800">
-                                Rp {cookie.Subtotal.toLocaleString("id-ID")}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-col gap-2 lg:min-w-[120px]">
-                    <Link
-                      href={`/order/edit/${order["Order ID"]}`}
-                      className="min-h-[44px] rounded-lg bg-dark-blue px-4 py-2 text-sm font-medium text-white text-center transition-colors hover:bg-dark-blue/90"
-                    >
-                      Edit Order
-                    </Link>
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2 lg:min-w-[120px]">
+                      <Link
+                        href={`/order/edit/${order["Order ID"]}`}
+                        className="min-h-[44px] rounded-lg bg-dark-blue px-4 py-2 text-sm font-medium text-white text-center transition-colors hover:bg-dark-blue/90"
+                      >
+                        Edit Order
+                      </Link>
+                      <button
+                        onClick={() => sendOrderToTelegram(order["Order ID"])}
+                        disabled={sendingOrderId === order["Order ID"]}
+                        className="min-h-[44px] mt-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white text-center transition-colors hover:bg-green-700 disabled:opacity-60"
+                      >
+                        {sendingOrderId === order["Order ID"] ? "Sending..." : "Send to Telegram"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
+              ))}
+            </div>
+          ))}
         {viewMode === "grouped" && (
           // Grouped View
           filteredGroupedData.length === 0 ? (
@@ -412,7 +496,7 @@ export default function OrdersListPage() {
                   <h2 className="text-xl font-bold text-dark-blue mb-4">
                     {group.cookieName} - {group.size}
                   </h2>
-                  
+
                   <div className="space-y-2">
                     {group.items.map((item, itemIdx) => (
                       <div

@@ -1,5 +1,9 @@
 import type { CookieProduct, SizeOption } from "../types";
 
+const WHATSAPP_NUMBER: Record<string, string | undefined> = {
+  "Cindy": process.env.NEXT_PUBLIC_SALES_WA,
+};
+
 // Google Sheet ID for order storage. Get from the sheet URL: .../d/SHEET_ID/edit
 // Option 1: Set NEXT_PUBLIC_GOOGLE_SHEET_ID in .env.local
 // Option 2: Replace the empty string below with your Sheet ID
@@ -77,7 +81,7 @@ export function buildWhatsAppOrderMessage(order: {
       (msg += `• ${item.name} ${item.size} x ${item.quantity} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`)
   );
   msg += `\n*Total: Rp ${order.total.toLocaleString("id-ID")}*`;
-  
+
   return msg;
 }
 
@@ -97,14 +101,14 @@ function buildWhatsAppMessageText(order: {
 }): string {
   const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
   const normalizedWhatsApp = normalizeWhatsAppNumber(order.customer.whatsapp);
-  
+
   let msg = `Pesanan Kue Baru - ${order.orderId}\n\n`;
-  
+
   msg += `Informasi Pesanan\n`;
   msg += `ID Pesanan: ${order.orderId}\n`;
   msg += `Tanggal Pesanan: ${order.orderDate}\n`;
   msg += `Tipe Pesanan: ${typeLabel}\n\n`;
-  
+
   msg += `Informasi Pelanggan\n`;
   msg += `Nama: ${order.customer.name}\n`;
   msg += `WhatsApp: ${normalizedWhatsApp}\n`;
@@ -112,12 +116,12 @@ function buildWhatsAppMessageText(order: {
   if (order.customer.sales?.trim()) {
     msg += `Sales: ${order.customer.sales}\n`;
   }
- 
+
   if (order.customer.note?.trim()) {
     msg += `Catatan: ${order.customer.note}\n`;
   }
   msg += `\n`;
-  
+
   msg += `Detail Kue\n`;
   order.items.forEach((item, index) => {
     msg += `${index + 1}. ${item.name} ${item.size} `;
@@ -125,14 +129,14 @@ function buildWhatsAppMessageText(order: {
     if (index < order.items.length - 1) msg += `\n`;
   });
   msg += `\n`;
-  
+
   if (order.gifts && order.gifts.length > 0) {
     msg += `\nHadiah yang Dimenangkan\n`;
     order.gifts.forEach((gift, index) => {
       msg += `${index + 1}. ${gift}\n`;
     });
   }
-  
+  msg += `Terima Kasih atas Pesanan Anda!`;
   return msg;
 }
 
@@ -153,11 +157,11 @@ export function buildTelegramOrderUpdateMessage(
 ): string {
   const normalizedOldWhatsApp = normalizeWhatsAppNumber(oldOrder.customer.whatsapp);
   const normalizedNewWhatsApp = normalizeWhatsAppNumber(newOrder.customer.whatsapp);
-  
+
   let msg = `<b>Pesanan Diperbarui - ${orderId}</b>\n\n`;
-  
+
   const changes: string[] = [];
-  
+
   // Compare customer information
   if (oldOrder.customer.name !== newOrder.customer.name) {
     changes.push(`Nama: "${oldOrder.customer.name}" → "${newOrder.customer.name}"`);
@@ -178,28 +182,28 @@ export function buildTelegramOrderUpdateMessage(
     const newSales = newOrder.customer.sales || "(kosong)";
     changes.push(`Sales: "${oldSales}" → "${newSales}"`);
   }
-  
+
   // Compare order type
   if (oldOrder.orderType !== newOrder.orderType) {
     const oldType = oldOrder.orderType === "single" ? "Single (Satuan)" : "Hampers";
     const newType = newOrder.orderType === "single" ? "Single (Satuan)" : "Hampers";
     changes.push(`Tipe Pesanan: "${oldType}" → "${newType}"`);
   }
-  
+
   // Compare items in detail - identify new, deleted, and updated items
   const oldItemsMap = new Map<string, { name: string; size: string; quantity: number }>();
   const newItemsMap = new Map<string, { name: string; size: string; quantity: number }>();
-  
+
   oldOrder.items.forEach(item => {
     const key = `${item.name}|${item.size}`;
     oldItemsMap.set(key, item);
   });
-  
+
   newOrder.items.forEach(item => {
     const key = `${item.name}|${item.size}`;
     newItemsMap.set(key, item);
   });
-  
+
   // Find new items (in new but not in old)
   const newItems: string[] = [];
   newItemsMap.forEach((item, key) => {
@@ -207,7 +211,7 @@ export function buildTelegramOrderUpdateMessage(
       newItems.push(`Ditambahkan: ${item.name} ${item.size} x${item.quantity}`);
     }
   });
-  
+
   // Find deleted items (in old but not in new)
   const deletedItems: string[] = [];
   oldItemsMap.forEach((item, key) => {
@@ -215,7 +219,7 @@ export function buildTelegramOrderUpdateMessage(
       deletedItems.push(`Dihapus: ${item.name} ${item.size} x${item.quantity}`);
     }
   });
-  
+
   // Find updated items (same name and size but different quantity)
   const updatedItems: string[] = [];
   newItemsMap.forEach((newItem, key) => {
@@ -224,7 +228,7 @@ export function buildTelegramOrderUpdateMessage(
       updatedItems.push(`Diperbarui: ${newItem.name} ${newItem.size} x${oldItem.quantity} → x${newItem.quantity}`);
     }
   });
-  
+
   // Add item changes to changes array
   if (newItems.length > 0) {
     changes.push(...newItems);
@@ -235,9 +239,9 @@ export function buildTelegramOrderUpdateMessage(
   if (updatedItems.length > 0) {
     changes.push(...updatedItems);
   }
-  
+
   // Compare total
-  
+
   if (changes.length === 0) {
     msg += `Tidak ada perubahan yang terdeteksi.\n\n`;
   } else {
@@ -247,7 +251,7 @@ export function buildTelegramOrderUpdateMessage(
     });
     msg += `\n`;
   }
-  
+
   // Show current order details
   msg += `<b>Detail Pesanan Saat Ini</b>\n`;
   const typeLabel = newOrder.orderType === "single" ? "Single (Satuan)" : "Hampers";
@@ -264,14 +268,19 @@ export function buildTelegramOrderUpdateMessage(
     msg += `${index + 1}. ${item.name} ${item.size} x ${item.quantity} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
   });
   msg += `\n`;
-  
+
   // Add WhatsApp link
   const whatsappMessageText = buildWhatsAppOrderUpdateMessage(orderId, oldOrder, newOrder);
   const encodedMessage = encodeURIComponent(whatsappMessageText);
   const whatsappUrl = `https://wa.me/${normalizedNewWhatsApp}?text=${encodedMessage}`;
-  
+
   msg += `\n\n<a href="${whatsappUrl}">Kirim ke WhatsApp</a>`;
-  
+
+  if (newOrder.customer.sales?.trim() && WHATSAPP_NUMBER[newOrder.customer.sales]) {
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER[newOrder.customer.sales]}?text=${encodedMessage}`;
+    msg += `\n\n<a href="${whatsappUrl}">Kirim ke WhatsApp Sales</a>`;
+  }
+
   return msg;
 }
 
@@ -295,11 +304,11 @@ function buildWhatsAppOrderUpdateMessage(
 ): string {
   const normalizedOldWhatsApp = normalizeWhatsAppNumber(oldOrder.customer.whatsapp);
   const normalizedNewWhatsApp = normalizeWhatsAppNumber(newOrder.customer.whatsapp);
-  
+
   let msg = `Pesanan Diperbarui - ${orderId}\n\n`;
-  
+
   const changes: string[] = [];
-  
+
   // Compare customer information
   if (oldOrder.customer.name !== newOrder.customer.name) {
     changes.push(`Nama: "${oldOrder.customer.name}" → "${newOrder.customer.name}"`);
@@ -320,28 +329,28 @@ function buildWhatsAppOrderUpdateMessage(
     const newSales = newOrder.customer.sales || "(kosong)";
     changes.push(`Sales: "${oldSales}" → "${newSales}"`);
   }
-  
+
   // Compare order type
   if (oldOrder.orderType !== newOrder.orderType) {
     const oldType = oldOrder.orderType === "single" ? "Single (Satuan)" : "Hampers";
     const newType = newOrder.orderType === "single" ? "Single (Satuan)" : "Hampers";
     changes.push(`Tipe Pesanan: "${oldType}" → "${newType}"`);
   }
-  
+
   // Compare items in detail - identify new, deleted, and updated items
   const oldItemsMap = new Map<string, { name: string; size: string; quantity: number }>();
   const newItemsMap = new Map<string, { name: string; size: string; quantity: number }>();
-  
+
   oldOrder.items.forEach(item => {
     const key = `${item.name}|${item.size}`;
     oldItemsMap.set(key, item);
   });
-  
+
   newOrder.items.forEach(item => {
     const key = `${item.name}|${item.size}`;
     newItemsMap.set(key, item);
   });
-  
+
   // Find new items (in new but not in old)
   const newItems: string[] = [];
   newItemsMap.forEach((item, key) => {
@@ -349,7 +358,7 @@ function buildWhatsAppOrderUpdateMessage(
       newItems.push(`Ditambahkan: ${item.name} ${item.size} x${item.quantity}`);
     }
   });
-  
+
   // Find deleted items (in old but not in new)
   const deletedItems: string[] = [];
   oldItemsMap.forEach((item, key) => {
@@ -357,7 +366,7 @@ function buildWhatsAppOrderUpdateMessage(
       deletedItems.push(`Dihapus: ${item.name} ${item.size} x${item.quantity}`);
     }
   });
-  
+
   // Find updated items (same name and size but different quantity)
   const updatedItems: string[] = [];
   newItemsMap.forEach((newItem, key) => {
@@ -366,7 +375,7 @@ function buildWhatsAppOrderUpdateMessage(
       updatedItems.push(`Diperbarui: ${newItem.name} ${newItem.size} x${oldItem.quantity} → x${newItem.quantity}`);
     }
   });
-  
+
   // Add item changes to changes array
   if (newItems.length > 0) {
     changes.push(...newItems);
@@ -377,7 +386,7 @@ function buildWhatsAppOrderUpdateMessage(
   if (updatedItems.length > 0) {
     changes.push(...updatedItems);
   }
-  
+
   if (changes.length === 0) {
     msg += `Tidak ada perubahan yang terdeteksi.\n\n`;
   } else {
@@ -387,7 +396,7 @@ function buildWhatsAppOrderUpdateMessage(
     });
     msg += `\n`;
   }
-  
+
   // Show current order details
   msg += `Detail Pesanan Saat Ini\n`;
   const typeLabel = newOrder.orderType === "single" ? "Single (Satuan)" : "Hampers";
@@ -404,12 +413,12 @@ function buildWhatsAppOrderUpdateMessage(
     msg += `${index + 1}. ${item.name} ${item.size} x ${item.quantity} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
   });
   msg += `\n`;
-  
+
   // Add edit order link
   const baseUrl = getBaseUrl();
   const salesParam = newOrder.customer.sales ? `?sales=${encodeURIComponent(newOrder.customer.sales)}` : "";
   const editLink = `${baseUrl}/order/edit/${orderId}${salesParam}`;
-  
+
   return msg;
 }
 
@@ -423,17 +432,18 @@ export function buildTelegramOrderMessage(order: {
   gifts?: string[];
   spinsUsed?: number;
   spinsRemaining?: number;
+  salesWhatsapp?: string;
 }): string {
   const typeLabel = order.orderType === "single" ? "Single (Satuan)" : "Hampers";
   const normalizedWhatsApp = normalizeWhatsAppNumber(order.customer.whatsapp);
-  
+
   let msg = `<b>Pesanan Kue Baru - ${order.orderId}</b>\n\n`;
-  
+
   msg += `<b>Informasi Pesanan</b>\n`;
   msg += `ID Pesanan: <code>${order.orderId}</code>\n`;
   msg += `Tanggal Pesanan: ${order.orderDate}\n`;
   msg += `Tipe Pesanan: ${typeLabel}\n\n`;
-  
+
   msg += `<b>Informasi Pelanggan</b>\n`;
   msg += `Nama: ${order.customer.name}\n`;
   msg += `WhatsApp: <code>${normalizedWhatsApp}</code>\n`;
@@ -445,7 +455,7 @@ export function buildTelegramOrderMessage(order: {
     msg += `Catatan: ${order.customer.note}\n`;
   }
   msg += `\n`;
-  
+
   msg += `<b>Detail Kue</b>\n`;
   order.items.forEach((item, index) => {
     msg += `${index + 1}. ${item.name} ${item.size} `;
@@ -453,22 +463,28 @@ export function buildTelegramOrderMessage(order: {
     if (index < order.items.length - 1) msg += `\n`;
   });
   msg += `\n`;
-  
-  
+
+
   if (order.gifts && order.gifts.length > 0) {
     msg += `\n<b>Hadiah yang Dimenangkan</b>\n`;
     order.gifts.forEach((gift, index) => {
       msg += `${index + 1}. ${gift.replace(/<br\s*\/>/g, "\n")}\n`;
     });
   }
-  
+
   // Add WhatsApp link
   const whatsappMessageText = buildWhatsAppMessageText(order);
   const encodedMessage = encodeURIComponent(whatsappMessageText);
   const whatsappUrl = `https://wa.me/${normalizedWhatsApp}?text=${encodedMessage}`;
-  
+
   msg += `\n\n<a href="${whatsappUrl}">Kirim ke WhatsApp</a>`;
-  
+
+  if (order.customer.sales?.trim() && WHATSAPP_NUMBER[order.customer.sales]) {
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER[order.customer.sales]}?text=${encodedMessage}`;
+    msg += `\n\n<a href="${whatsappUrl}">Kirim ke WhatsApp Sales</a>`;
+  }
+
+
   return msg;
 }
 
@@ -740,7 +756,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers1",
     name: "Hampers 1",
-    orderType:"hampers",
+    orderType: "hampers",
     image: "/cookies/hampers1.jpeg",
     basePrice: 6000,
     sizePrices: {
@@ -750,7 +766,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers2",
     name: "Hampers 2",
-    orderType:"hampers",
+    orderType: "hampers",
     image: "/cookies/hampers2.jpeg",
     basePrice: 9000,
     sizePrices: {
@@ -760,7 +776,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers3",
     name: "Hampers 3",
-    orderType:"hampers",
+    orderType: "hampers",
     image: "/cookies/hampers3.jpeg",
     basePrice: 19000,
     sizePrices: {
@@ -770,7 +786,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers4",
     name: "Hampers 4",
-    orderType:"hampers",
+    orderType: "hampers",
     image: "/cookies/hampers4.jpeg",
     basePrice: 16000,
     sizePrices: {
@@ -780,7 +796,7 @@ export const COOKIE_PRODUCTS: CookieProduct[] = [
   {
     id: "hampers5",
     name: "Hampers 5",
-    orderType:"hampers",
+    orderType: "hampers",
     image: "/cookies/hampers5.jpeg",
     basePrice: 3500,
     sizePrices: {

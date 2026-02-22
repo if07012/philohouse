@@ -7,6 +7,8 @@ export async function POST(request: Request) {
     // Get credentials from environment variables
     const validUsername = process.env.ORDERS_LIST_USERNAME || 'admin';
     const validPassword = process.env.ORDERS_LIST_PASSWORD || 'sukses123';
+    const salesUsername = process.env.SALES_USERNAME;
+    const salesPassword = process.env.SALES_PASSWORD;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -16,7 +18,17 @@ export async function POST(request: Request) {
     }
 
     if (username === validUsername && password === validPassword) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, role: 'admin' });
+    }
+
+    // Support a simple Sales user via env vars (SALES_USERNAME / SALES_PASSWORD)
+    if (
+      salesUsername &&
+      salesPassword &&
+      username === salesUsername &&
+      password === salesPassword
+    ) {
+      return NextResponse.json({ success: true, role: 'sales', salesId: username });
     }
 
     return NextResponse.json(
