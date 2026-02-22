@@ -456,7 +456,7 @@ export default function OrdersListPage() {
               <p className="text-lg font-bold">
                 Total Revenue: Rp{" "}
                 {filteredOrders
-                  .reduce((sum, order) => sum + order.Total, 0)
+                  .reduce((sum, order) => sum + parseInt(order.Total.toString()), 0)
                   .toLocaleString("id-ID")}
               </p>
             </div>
