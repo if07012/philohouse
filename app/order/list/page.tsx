@@ -125,7 +125,7 @@ export default function OrdersListPage() {
       );
 
       if (existingCustomer) {
-        existingCustomer.quantity += cookie.Quantity;
+        existingCustomer.quantity += parseInt(cookie.Quantity.toString());
       } else {
         acc[key].items.push({
           customerName,
