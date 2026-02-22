@@ -388,7 +388,7 @@ export default function OrdersListPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-primary-pink">
-                            Rp {order.Total.toLocaleString("id-ID")}
+                            Rp {parseInt(order.Total.toString()).toLocaleString("id-ID")}
                           </p>
                         </div>
                       </div>
@@ -446,7 +446,7 @@ export default function OrdersListPage() {
                                   {cookie.Quantity}
                                 </span>
                                 <span className="font-medium text-gray-800">
-                                  Rp {cookie.Subtotal.toLocaleString("id-ID")}
+                                  Rp {parseInt(cookie.Subtotal.toString()).toLocaleString("id-ID")}
                                 </span>
                               </div>
                             ))}
