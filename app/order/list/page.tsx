@@ -129,7 +129,7 @@ export default function OrdersListPage() {
       } else {
         acc[key].items.push({
           customerName,
-          quantity: cookie.Quantity,
+          quantity: parseInt(cookie.Quantity.toString()),
           size: size,
           customerInfo,
         });
