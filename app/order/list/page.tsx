@@ -33,7 +33,7 @@ export default function OrdersListPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"orders" | "grouped">("orders");
+  const [viewMode, setViewMode] = useState<"orders" | "grouped" | "groupedWhatsApp">("orders");
 
   useEffect(() => {
     // Check authentication
@@ -251,6 +251,62 @@ export default function OrdersListPage() {
     );
   });
 
+  // Group by cookie name + WhatsApp number
+  const groupedWhatsAppData = filteredOrders.reduce((acc, order) => {
+    const customerName = order["Customer Name"];
+    const whatsapp = order.WhatsApp || "";
+
+    order.cookieDetails.forEach((cookie) => {
+      const cookieName = cookie["Cookie Name"];
+      const key = `${whatsapp}`;
+      if (!acc[key]) {
+        acc[key] = {
+          whatsapp,
+          items: [],
+        };
+      }
+
+      const existing = acc[key].items.find((it: any) => it.customerName === customerName && it.size === cookie.Size);
+      if (existing) {
+        existing.quantity += parseInt(cookie.Quantity.toString());
+      } else {
+        acc[key].items.push({
+          customerName,
+          quantity: parseInt(cookie.Quantity.toString()),
+          size: cookie.Size,
+          cookieName:cookieName,
+          customerInfo: { whatsapp, address: order.Address },
+        });
+      }
+    });
+
+    return acc;
+  }, {} as any);
+  const groupedWhatsAppArray = Object.values(groupedWhatsAppData)
+    .map((g: any) => ({
+      ...g,
+      items: g.items.sort((a: any, b: any) => a.customerName.localeCompare(b.customerName)),
+    }))
+    .sort((a: any, b: any) => {
+      if (a.cookieName !== b.cookieName) return a.cookieName.localeCompare(b.cookieName);
+      return a.whatsapp.localeCompare(b.whatsapp);
+    });
+
+  const filteredGroupedWhatsAppData = groupedWhatsAppArray.filter((group) => {
+    if (!searchTerm) return true;
+    const search = searchTerm.toLowerCase();
+    return (
+      group.whatsapp.toLowerCase().includes(search) ||
+      group.items.some((item: any) =>
+        item.customerName.toLowerCase().includes(search) ||
+        item.customerInfo.whatsapp.toLowerCase().includes(search) ||
+        item.customerInfo.address.toLowerCase().includes(search)
+      )
+    );
+  });
+  const resultsCount = viewMode === "orders" ? filteredOrders.length : viewMode === "grouped" ? filteredGroupedData.length : filteredGroupedWhatsAppData.length;
+  const totalCount = viewMode === "orders" ? orders.length : viewMode === "grouped" ? groupedArray.length : groupedWhatsAppArray.length;
+  console.log(filteredGroupedWhatsAppData)
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -325,8 +381,8 @@ export default function OrdersListPage() {
           <button
             onClick={() => setViewMode("orders")}
             className={`min-h-[44px] rounded-lg px-6 py-2 text-sm font-semibold transition-colors ${viewMode === "orders"
-                ? "bg-dark-blue text-white"
-                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              ? "bg-dark-blue text-white"
+              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
               }`}
           >
             Order View
@@ -334,11 +390,20 @@ export default function OrdersListPage() {
           <button
             onClick={() => setViewMode("grouped")}
             className={`min-h-[44px] rounded-lg px-6 py-2 text-sm font-semibold transition-colors ${viewMode === "grouped"
-                ? "bg-dark-blue text-white"
-                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              ? "bg-dark-blue text-white"
+              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
               }`}
           >
             Grouped View
+          </button>
+          <button
+            onClick={() => setViewMode("groupedWhatsApp")}
+            className={`min-h-[44px] rounded-lg px-6 py-2 text-sm font-semibold transition-colors ${viewMode === "groupedWhatsApp"
+              ? "bg-dark-blue text-white"
+              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+          >
+            Grouped by WhatsApp
           </button>
         </div>
 
@@ -519,21 +584,64 @@ export default function OrdersListPage() {
             </div>
           )
         )}
+        {viewMode === "groupedWhatsApp" && (
+          filteredGroupedWhatsAppData.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-8 text-center">
+              <p className="text-sm text-gray-500 sm:text-base">
+                {searchTerm
+                  ? "No data found matching your search."
+                  : "No data found."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredGroupedWhatsAppData.map((group: any, groupIdx: number) => (
+                <div
+                  key={groupIdx}
+                  className="rounded-xl bg-white p-4 shadow-md sm:p-6"
+                >
+                  <h2 className="text-xl font-bold text-dark-blue mb-4">
+                    {group.whatsapp} - {group.items[0]?.customerName}
+                  </h2>
+                  <div className="text-sm text-gray-600 mb-4">
+                    {group.items[0]?.customerInfo?.address}
+                  </div>
+                  <div className="space-y-2">
+                    {group.items.map((item: any, itemIdx: number) => (
+                      <div
+                        key={itemIdx}
+                        className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                      >
+                        <div className="flex-1 flex items-center gap-4">
+                          <span className="text-gray-600 min-w-[100px]">
+                            {item.quantity} item{item.quantity !== 1 ? "s" : ""}
+                          </span>
+                          <span className="font-medium text-gray-800 flex-1">
+                            {item.cookieName} - {item.size}
+                          </span>
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
 
         {/* Summary */}
-        {(viewMode === "orders" ? filteredOrders.length > 0 : filteredGroupedData.length > 0) && (
+        {resultsCount > 0 && (
           <div className="mt-6 rounded-xl bg-dark-blue p-4 text-white shadow-md sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <p className="text-sm sm:text-base">
                 {viewMode === "orders" ? (
                   <>
-                    Showing {filteredOrders.length} of {orders.length} order
-                    {orders.length !== 1 ? "s" : ""}
+                    Showing {resultsCount} of {totalCount} order{totalCount !== 1 ? "s" : ""}
                   </>
                 ) : (
                   <>
-                    Showing {filteredGroupedData.length} customer
-                    {filteredGroupedData.length !== 1 ? "s" : ""}
+                    Showing {resultsCount} of {totalCount} group{totalCount !== 1 ? "s" : ""}
                   </>
                 )}
               </p>
