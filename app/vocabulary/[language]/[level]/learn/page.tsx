@@ -19,7 +19,7 @@ function shuffleArray(array: any[]) {
 }
 
 // Number of rounds to complete the test (can be made configurable)
-const MAX_ROUNDS = 1;
+const MAX_ROUNDS = 3;
 
 export default function Page() {
     const params = useParams();
@@ -55,7 +55,7 @@ export default function Page() {
         for (let i = 0; i < times; i++) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = locale;
-            utterance.rate = 0.9;
+            utterance.rate = 0.7;
             utterance.pitch = 1;
             if (preferred) utterance.voice = preferred;
             window.speechSynthesis.speak(utterance);
