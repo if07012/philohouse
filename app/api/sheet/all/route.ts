@@ -35,55 +35,53 @@ export async function GET(request: Request) {
             });
 
         // Check pass status from Vocabulary-Level-Summary sheet for vocabulary groups
-        if (group.startsWith('vocab-')) {
-            try {
-                const summarySheet = doc.sheetsByTitle['Vocabulary-Level-Summary'];
-                if (summarySheet) {
-                    const { readSheetData } = await import('@/app/lib/googleSheets');
-                    const summaryData = await readSheetData(spreadsheetId, 'Vocabulary-Level-Summary');
+        try {
+            const summarySheet = doc.sheetsByTitle['Vocabulary-Level-Summary'];
+            if (summarySheet) {
+                const { readSheetData } = await import('@/app/lib/googleSheets');
+                const summaryData = await readSheetData(spreadsheetId, 'Vocabulary-Level-Summary');
 
-                    // Extract language from group (e.g., vocab-english -> english)
-                    const language = group.replace('vocab-', '');
+                // Extract language from group (e.g., vocab-english -> english)
+                const language = group.replace('vocab-', '');
 
-                    // Create a map of level -> isPass status
-                    const levelStatusMap = new Map<string, boolean>();
+                // Create a map of level -> isPass status
+                const levelStatusMap = new Map<string, boolean>();
 
-                    // Get the most recent pass status for each level
-                    const relevantEntries = summaryData
-                        .filter((entry: any) =>
-                            (entry.Language || entry.language)?.toLowerCase() === language.toLowerCase()
-                        )
-                        .sort((a: any, b: any) => {
-                            const dateA = new Date(a.CompletedAt || a.completedAt || 0);
-                            const dateB = new Date(b.CompletedAt || b.completedAt || 0);
-                            return dateB.getTime() - dateA.getTime();
-                        });
-
-                    relevantEntries.forEach((entry: any) => {
-                        const level = entry.Level || entry.level;
-                        // Check if IsPass is true (handle both string 'true' and boolean true)
-                        const isPassValue = entry.IsPass || entry.isPass;
-                        const isPass = isPassValue === 'TRUE' || isPassValue === true || isPassValue === 1 || isPassValue === '1';
-
-                        // Only set if not already in map (to keep most recent)
-                        if (level && !levelStatusMap.has(level) && isPass) {
-                            levelStatusMap.set(level, isPass);
-                        }
+                // Get the most recent pass status for each level
+                const relevantEntries = summaryData
+                    .filter((entry: any) =>
+                        (entry.Language || entry.language)?.toLowerCase() === language.toLowerCase()
+                    )
+                    .sort((a: any, b: any) => {
+                        const dateA = new Date(a.CompletedAt || a.completedAt || 0);
+                        const dateB = new Date(b.CompletedAt || b.completedAt || 0);
+                        return dateB.getTime() - dateA.getTime();
                     });
 
-                    // Update matching sheets with pass status
-                    matchingSheets.forEach(sheet => {
-                        const levelName = sheet.levelName;
-                        if (levelName && levelStatusMap.has(levelName)) {
-                            const isPassStatus = levelStatusMap.get(levelName);
-                            sheet.isPass = isPassStatus === true;
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Error checking level pass status:', error);
-                // Continue with default isPass: false
+                relevantEntries.forEach((entry: any) => {
+                    const level = entry.Level || entry.level;
+                    // Check if IsPass is true (handle both string 'true' and boolean true)
+                    const isPassValue = entry.IsPass || entry.isPass;
+                    const isPass = isPassValue === 'TRUE' || isPassValue === true || isPassValue === 1 || isPassValue === '1';
+
+                    // Only set if not already in map (to keep most recent)
+                    if (level && !levelStatusMap.has(level) && isPass) {
+                        levelStatusMap.set(level, isPass);
+                    }
+                });
+
+                // Update matching sheets with pass status
+                matchingSheets.forEach(sheet => {
+                    const levelName = sheet.levelName;
+                    if (levelName && levelStatusMap.has(levelName)) {
+                        const isPassStatus = levelStatusMap.get(levelName);
+                        sheet.isPass = isPassStatus === true;
+                    }
+                });
             }
+        } catch (error) {
+            console.error('Error checking level pass status:', error);
+            // Continue with default isPass: false
         }
 
         return NextResponse.json(matchingSheets);
