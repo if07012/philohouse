@@ -544,7 +544,7 @@ export function buildCookieDetailRows(order: {
 export const SPIN_THRESHOLD = 500_000;
 
 export function getSpinChances(total: number): number {
-  return Math.floor(total / SPIN_THRESHOLD);
+  return 0;
 }
 
 export interface SpinPrize {
