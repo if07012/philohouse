@@ -29,7 +29,6 @@ export async function readSheetData(spreadsheetId: string, sheetName?: string) {
     if (!sheet) {
       sheet = await doc.addSheet({ title: sheetName });
     }
-    console.log(sheetName)
     const rows = await sheet.getRows();
     return rows.map(row => row.toObject());
   } catch (error) {
