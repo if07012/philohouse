@@ -535,6 +535,12 @@ export default function OrdersListPage() {
                       >
                         {sendingOrderId === order["Order ID"] ? "Sending..." : "Send to Telegram"}
                       </button>
+                      <Link
+                        href={`/order/list/invoice/${encodeURIComponent(order["Order ID"])}`}
+                        className="min-h-[44px] mt-2 rounded-lg bg-primary-pink px-4 py-2 text-sm font-medium text-white text-center transition-colors hover:bg-primary-pink/90 block"
+                      >
+                        Generate Invoice
+                      </Link>
                     </div>
                   </div>
                 </div>

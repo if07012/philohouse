@@ -34,7 +34,7 @@ export default function RulesPage() {
           </p>
           <ul className="list-disc list-inside text-sm sm:text-base text-gray-700 space-y-1">
             <li>Tidur siang di hari sebelumnya.</li>
-            <li>Hafalan vocabulary 3 level.</li>
+            <li>Hafalan vocabulary 3 level atau Hafalan ayat Quran 3 ayat.</li>
             <li>Solat subuh di masjid.</li>
           </ul>
         </section>
@@ -45,7 +45,7 @@ export default function RulesPage() {
           </h2>
           <ul className="list-disc list-inside text-sm sm:text-base text-gray-700 space-y-1">
             <li>
-              Jatah <strong>2 jam</strong> diberikan secara otomatis.
+              Jatah <strong>2 jam</strong> diberikan secara otomatis (Jika Gampang bangun sahur).
             </li>
             <li>
               Untuk main di <strong>sore hari</strong> di weekend: tetap berlaku aturan
