@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Head from "next/head";
 import { useParams } from "next/navigation";
 import { pdf } from "@react-pdf/renderer";
 import {
@@ -64,15 +63,44 @@ export default function InvoiceViewPage() {
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [totalAfterDiscount, setTotalAfterDiscount] = useState<number | undefined>(undefined);
 
-  const pageTitle = order
-    ? `Invoice ${order["Order ID"]} — ${order["Customer Name"]}`
-    : "Invoice";
+  // Update page metadata with order/customer info when data loads
+  useEffect(() => {
+    if (!order) return;
+    const title = `Invoice ${order["Order ID"]} — ${order["Customer Name"]}`;
+    const description = `Invoice ${order["Order ID"]} untuk  ${order["Customer Name"]}. Total: ${formatRupiah(
+      totalAfterDiscount ?? Number(order.Total)
+    )}.`;
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/order/list/invoice/${order["Order ID"]}/view`
+        : "";
 
-  const pageDescription = order
-    ? `Invoice ${order["Order ID"]} for ${order["Customer Name"]}. Total: ${formatRupiah(
-        totalAfterDiscount ?? Number(order.Total)
-      )}. Download at ${typeof window !== "undefined" ? window.location.origin : ""}/order/list/invoice/${order["Order ID"]}/view`
-    : "View invoice details";
+    document.title = title;
+
+    const setMeta = (selector: string, attr: string, value: string) => {
+      let el = document.querySelector(selector) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement("meta");
+        if (selector.startsWith('meta[name="')) {
+          const match = selector.match(/name="([^"]+)"/);
+          if (match) el.setAttribute("name", match[1]);
+        } else if (selector.startsWith('meta[property="')) {
+          const match = selector.match(/property="([^"]+)"/);
+          if (match) el.setAttribute("property", match[1]);
+        }
+        document.head.appendChild(el);
+      }
+      el.setAttribute(attr === "content" ? "content" : attr, value);
+    };
+    setMeta('meta[name="description"]', "content", description);
+    setMeta('meta[property="og:title"]', "content", title);
+    setMeta('meta[property="og:description"]', "content", description);
+    if (url) setMeta('meta[property="og:url"]', "content", url);
+
+    return () => {
+      document.title = "Philihouse.id — Fresh, Small-Batch Cookies Made for Smiles 🍪";
+    };
+  }, [order, totalAfterDiscount]);
 
   useEffect(() => {
     const auth = sessionStorage.getItem("orders_list_authenticated");
@@ -195,17 +223,17 @@ export default function InvoiceViewPage() {
       const d = new Date();
       const dateStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
       setInvoiceSent(dateStr);
-        // send Telegram notification about the sent invoice
-        try {
-          const msg = `Invoice sent: Order #${order["Order ID"]}\nCustomer: ${order["Customer Name"]}\nTotal: ${formatRupiah(totalAfterDiscount ?? Number(order.Total))}`;
-          await fetch(`/api/telegram/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: msg }),
-          });
-        } catch (tgErr) {
-          console.warn("Failed to send Telegram notification:", tgErr);
-        }
+      // send Telegram notification about the sent invoice
+      try {
+        const msg = `Invoice sent: Order #${order["Order ID"]}\nCustomer: ${order["Customer Name"]}\nTotal: ${formatRupiah(totalAfterDiscount ?? Number(order.Total))}`;
+        await fetch(`/api/telegram/send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: msg }),
+        });
+      } catch (tgErr) {
+        console.warn("Failed to send Telegram notification:", tgErr);
+      }
     } catch (e) {
       console.error("Error marking invoice as sent:", e);
       alert("Failed to mark invoice as sent");
@@ -247,183 +275,176 @@ export default function InvoiceViewPage() {
   }
 
   return (
-    <>
-      <Head>
-        <title>{pageTitle}</title>
-        <meta name="description" content={pageDescription} />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDescription} />
-      </Head>
     <div className="min-h-screen bg-gray-100 pb-8">
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-        <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <img src="/cookies/logo.png" alt="Invoice Icon" />
-            <h1 className="text-2xl font-bold text-dark-blue"> Invoice</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Order {order["Order ID"]} • Generated invoice
-            </p>
-          </div>
-          {isAuthenticated && (
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/order/list"
-                className="inline-block min-h-[44px] rounded-xl bg-gray-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-gray-700 text-center"
-              >
-                Back to List
-              </Link>
-              <Link
-                href={`/order/list/invoice/${encodeURIComponent(order["Order ID"])}`}
-                className="inline-block min-h-[44px] rounded-xl bg-dark-blue px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-dark-blue/90 text-center"
-              >
-                Edit Invoice
-              </Link>
+        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+          <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <img src="/cookies/logo.png" alt="Invoice Icon" />
+              <h1 className="text-2xl font-bold text-dark-blue"> Invoice</h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Order {order["Order ID"]} • Generated invoice
+              </p>
             </div>
-          )}
-        </header>
-
-        <div className="rounded-xl bg-white p-6 shadow-md space-y-6">
-          {/* Invoice status - only for logged-in users */}
-          {isAuthenticated && (
-            <div className="flex flex-wrap gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <span className="flex items-center gap-2">
-                <span className="font-medium text-gray-600">Invoice Generated:</span>
-                {invoiceGenerated ? (
-                  <span className="text-green-700 font-medium">{invoiceGenerated}</span>
-                ) : (
-                  <span className="text-gray-500">—</span>
-                )}
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="font-medium text-gray-600">Invoice Sent:</span>
-                {invoiceSent ? (
-                  <span className="text-green-700 font-medium">{invoiceSent}</span>
-                ) : (
-                  <span className="text-gray-500">Not sent</span>
-                )}
-              </span>
-            </div>
-          )}
-
-          {/* Bill To */}
-          <section>
-            <h2 className="text-lg font-semibold text-dark-blue mb-3">Bill To</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-gray-600">Customer:</span> {order["Customer Name"]}
+            {isAuthenticated && (
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/order/list"
+                  className="inline-block min-h-[44px] rounded-xl bg-gray-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-gray-700 text-center"
+                >
+                  Back to List
+                </Link>
+                <Link
+                  href={`/order/list/invoice/${encodeURIComponent(order["Order ID"])}`}
+                  className="inline-block min-h-[44px] rounded-xl bg-dark-blue px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-dark-blue/90 text-center"
+                >
+                  Edit Invoice
+                </Link>
               </div>
-              <div>
-                <span className="text-gray-600">WhatsApp:</span>{' '}
-                {order.WhatsApp ? (
-                  <a
-                    href={makeWhatsAppHref(
-                      order.WhatsApp,
-                      `Halo ${order["Customer Name"] || ""}, invoice untuk order ${order["Order ID"]} dapat diunduh di ${typeof window !== "undefined" ? window.location.origin : ""}/order/list/invoice/${order["Order ID"]}/view`
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary-pink underline"
-                  >
-                    {order.WhatsApp}
-                  </a>
-                ) : (
-                  <span className="text-gray-500">—</span>
-                )}
-              </div>
-              <div className="sm:col-span-2">
-                <span className="text-gray-600">Address:</span> {order.Address}
-              </div>
-              {order.Note && (
-                <div className="sm:col-span-2">
-                  <span className="text-gray-600">Note:</span> {order.Note}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Payment Info */}
-          <section>
-            <div className="rounded-lg bg-gray-50 p-4 border border-gray-200 text-sm">
-              <div className="font-semibold">Pembayaran ke :</div>
-              <div>Euis Maesyaroh</div>
-              <div>639 562 6225 (BCA)</div>
-            </div>
-          </section>
-          {/* Items */}
-          <section>
-            <h2 className="text-lg font-semibold text-dark-blue mb-3">Items</h2>
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-dark-blue text-white">
-                    <th className="text-left py-2 px-3">Item</th>
-                    <th className="text-left py-2 px-3">Size</th>
-                    <th className="text-right py-2 px-3">Qty</th>
-                    <th className="text-right py-2 px-3">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.cookieDetails?.map((cookie, idx) => (
-                    <tr key={idx} className="border-t border-gray-200 even:bg-gray-50">
-                      <td className="py-2 px-3">{cookie["Cookie Name"]}</td>
-                      <td className="py-2 px-3">{cookie.Size}</td>
-                      <td className="py-2 px-3 text-right">{cookie.Quantity}</td>
-                      <td className="py-2 px-3 text-right">
-                        {formatRupiah(Number(cookie.Subtotal))}
-                      </td>
-                    </tr>
-                  ))}
-                  {extraItems.map((item, idx) => (
-                    <tr key={`extra-${idx}`} className="border-t border-gray-200 even:bg-gray-50">
-                      <td className="py-2 px-3">{item.name}</td>
-                      <td className="py-2 px-3">-</td>
-                      <td className="py-2 px-3 text-right">{item.quantity}</td>
-                      <td className="py-2 px-3 text-right">
-                        {formatRupiah(item.quantity * item.unitPrice)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-4 space-y-1 text-right">
-              {subtotalOverride != null && subtotalOverride !== Number(order.Total) && (
-                <div className="text-sm text-gray-600">
-                  Subtotal: {formatRupiah(subtotalOverride)}
-                </div>
-              )}
-              {discountAmount > 0 && (
-                <div className="text-sm text-red-600">
-                  Diskon{discount?.type === "percent" ? ` (${discount.value}%)` : ""}: -{formatRupiah(discountAmount)}
-                </div>
-              )}
-              <div className="text-lg font-bold text-primary-pink">
-                Total: {formatRupiah(totalAfterDiscount ?? Number(order.Total))}
-              </div>
-            </div>
-          </section>
-
-          {/* Actions - logged-in: all buttons; not logged-in: only Download PDF */}
-          <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
-            <button
-              onClick={handleDownloadPdf}
-              disabled={downloadingPdf}
-              className="min-h-[48px] rounded-xl bg-primary-pink px-8 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 disabled:opacity-60"
-            >
-              {downloadingPdf ? "Generating PDF..." : "Download PDF"}
-            </button>
-            {isAuthenticated && invoiceGenerated && !invoiceSent && (
-              <button
-                onClick={handleMarkAsSent}
-                disabled={markingSent}
-                className="min-h-[48px] rounded-xl bg-green-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-green-700 disabled:opacity-60"
-              >
-                {markingSent ? "Marking..." : "Mark Invoice as Sent"}
-              </button>
             )}
+          </header>
+
+          <div className="rounded-xl bg-white p-6 shadow-md space-y-6">
+            {/* Invoice status - only for logged-in users */}
+            {isAuthenticated && (
+              <div className="flex flex-wrap gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <span className="flex items-center gap-2">
+                  <span className="font-medium text-gray-600">Invoice Generated:</span>
+                  {invoiceGenerated ? (
+                    <span className="text-green-700 font-medium">{invoiceGenerated}</span>
+                  ) : (
+                    <span className="text-gray-500">—</span>
+                  )}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="font-medium text-gray-600">Invoice Sent:</span>
+                  {invoiceSent ? (
+                    <span className="text-green-700 font-medium">{invoiceSent}</span>
+                  ) : (
+                    <span className="text-gray-500">Not sent</span>
+                  )}
+                </span>
+              </div>
+            )}
+
+            {/* Bill To */}
+            <section>
+              <h2 className="text-lg font-semibold text-dark-blue mb-3">Bill To</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-600">Customer:</span> {order["Customer Name"]}
+                </div>
+                <div>
+                  <span className="text-gray-600">WhatsApp:</span>{' '}
+                  {order.WhatsApp ? (
+                    <a
+                      href={makeWhatsAppHref(
+                        order.WhatsApp,
+                        `Halo ${order["Customer Name"] || ""}, invoice untuk order ${order["Order ID"]} dapat diunduh di ${typeof window !== "undefined" ? window.location.origin : ""}/order/list/invoice/${order["Order ID"]}/view`
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-pink underline"
+                    >
+                      {order.WhatsApp}
+                    </a>
+                  ) : (
+                    <span className="text-gray-500">—</span>
+                  )}
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-gray-600">Address:</span> {order.Address}
+                </div>
+                {order.Note && (
+                  <div className="sm:col-span-2">
+                    <span className="text-gray-600">Note:</span> {order.Note}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Payment Info */}
+            <section>
+              <div className="rounded-lg bg-gray-50 p-4 border border-gray-200 text-sm">
+                <div className="font-semibold">Pembayaran ke :</div>
+                <div>Euis Maesyaroh</div>
+                <div>639 562 6225 (BCA)</div>
+              </div>
+            </section>
+            {/* Items */}
+            <section>
+              <h2 className="text-lg font-semibold text-dark-blue mb-3">Items</h2>
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-dark-blue text-white">
+                      <th className="text-left py-2 px-3">Item</th>
+                      <th className="text-left py-2 px-3">Size</th>
+                      <th className="text-right py-2 px-3">Qty</th>
+                      <th className="text-right py-2 px-3">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {order.cookieDetails?.map((cookie, idx) => (
+                      <tr key={idx} className="border-t border-gray-200 even:bg-gray-50">
+                        <td className="py-2 px-3">{cookie["Cookie Name"]}</td>
+                        <td className="py-2 px-3">{cookie.Size}</td>
+                        <td className="py-2 px-3 text-right">{cookie.Quantity}</td>
+                        <td className="py-2 px-3 text-right">
+                          {formatRupiah(Number(cookie.Subtotal))}
+                        </td>
+                      </tr>
+                    ))}
+                    {extraItems.map((item, idx) => (
+                      <tr key={`extra-${idx}`} className="border-t border-gray-200 even:bg-gray-50">
+                        <td className="py-2 px-3">{item.name}</td>
+                        <td className="py-2 px-3">-</td>
+                        <td className="py-2 px-3 text-right">{item.quantity}</td>
+                        <td className="py-2 px-3 text-right">
+                          {formatRupiah(item.quantity * item.unitPrice)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 space-y-1 text-right">
+                {subtotalOverride != null && subtotalOverride !== Number(order.Total) && (
+                  <div className="text-sm text-gray-600">
+                    Subtotal: {formatRupiah(subtotalOverride)}
+                  </div>
+                )}
+                {discountAmount > 0 && (
+                  <div className="text-sm text-red-600">
+                    Diskon{discount?.type === "percent" ? ` (${discount.value}%)` : ""}: -{formatRupiah(discountAmount)}
+                  </div>
+                )}
+                <div className="text-lg font-bold text-primary-pink">
+                  Total: {formatRupiah(totalAfterDiscount ?? Number(order.Total))}
+                </div>
+              </div>
+            </section>
+
+            {/* Actions - logged-in: all buttons; not logged-in: only Download PDF */}
+            <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
+              <button
+                onClick={handleDownloadPdf}
+                disabled={downloadingPdf}
+                className="min-h-[48px] rounded-xl bg-primary-pink px-8 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-primary-pink/90 disabled:opacity-60"
+              >
+                {downloadingPdf ? "Generating PDF..." : "Download PDF"}
+              </button>
+              {isAuthenticated && invoiceGenerated && !invoiceSent && (
+                <button
+                  onClick={handleMarkAsSent}
+                  disabled={markingSent}
+                  className="min-h-[48px] rounded-xl bg-green-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-green-700 disabled:opacity-60"
+                >
+                  {markingSent ? "Marking..." : "Mark Invoice as Sent"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }
