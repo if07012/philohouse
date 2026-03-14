@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { buildTelegramOrderMessage } from "../data/cookies";
 
+interface ExtraItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 interface Order {
   "Order ID": string;
   "Order Date": string;
@@ -18,6 +24,10 @@ interface Order {
   "Invoice Generated"?: string;
   "Invoice Sent"?: string;
   gifts?: string[];
+  extraItems?: ExtraItem[];
+  discount?: { type: "percent" | "fixed"; value: number };
+  subtotal?: number;
+  discountAmount?: number;
   cookieDetails: Array<{
     "Cookie Name": string;
     Size: string;
@@ -573,14 +583,14 @@ export default function OrdersListPage() {
                         </div>
                       )}
 
-                      {/* Cookie Details */}
-                      {order.cookieDetails && order.cookieDetails.length > 0 && (
+                      {/* Items (from latest generated invoice when available) */}
+                      {((order.cookieDetails && order.cookieDetails.length > 0) || (order.extraItems && order.extraItems.length > 0)) && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
                           <h3 className="text-sm font-semibold text-dark-blue mb-2">
-                            Cookies Ordered:
+                            Items:
                           </h3>
                           <div className="space-y-1">
-                            {order.cookieDetails.map((cookie, idx) => (
+                            {order.cookieDetails?.map((cookie, idx) => (
                               <div
                                 key={idx}
                                 className="flex justify-between items-center text-sm"
@@ -594,7 +604,34 @@ export default function OrdersListPage() {
                                 </span>
                               </div>
                             ))}
+                            {order.extraItems?.map((item, idx) => (
+                              <div
+                                key={`extra-${idx}`}
+                                className="flex justify-between items-center text-sm"
+                              >
+                                <span className="text-gray-700">
+                                  {item.name} × {item.quantity}
+                                </span>
+                                <span className="font-medium text-gray-800">
+                                  Rp {(item.quantity * item.unitPrice).toLocaleString("id-ID")}
+                                </span>
+                              </div>
+                            ))}
                           </div>
+                          {(order.discountAmount && order.discountAmount > 0) && (
+                            <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 text-sm">
+                              {order.subtotal != null && (
+                                <div className="flex justify-between text-gray-600">
+                                  <span>Subtotal</span>
+                                  <span>Rp {order.subtotal.toLocaleString("id-ID")}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-red-600">
+                                <span>Diskon{order.discount?.type === "percent" ? ` (${order.discount.value}%)` : ""}</span>
+                                <span>- Rp {order.discountAmount!.toLocaleString("id-ID")}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

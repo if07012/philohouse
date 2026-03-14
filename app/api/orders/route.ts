@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { readSheetData } from '../../lib/googleSheets';
+import { readSheetData, getGoogleSheet } from '../../lib/googleSheets';
 import { GOOGLE_SHEET_ID } from '../../order/data/cookies';
+import { getInvoiceDataFromDoc } from '../../order/lib/invoiceServer';
 
 export async function GET(request: Request) {
   try {
@@ -43,12 +44,37 @@ export async function GET(request: Request) {
       cookieDetailsByOrderId[orderId].push(detail);
     });
 
-    // Combine orders with their cookie details and gifts
-    const ordersWithDetails = orders.map((order: any) => ({
-      ...order,
-      cookieDetails: cookieDetailsByOrderId[order['Order ID']] || [],
-      gifts: giftsByOrderId[order['Order ID']] || [],
-    }));
+    // Load invoice data for orders that have generated invoices (sheet by order ID)
+    const doc = await getGoogleSheet(GOOGLE_SHEET_ID);
+    const invoiceDataByOrderId: Record<string, Awaited<ReturnType<typeof getInvoiceDataFromDoc>>> = {};
+    await Promise.all(
+      orders.map(async (order: any) => {
+        const inv = await getInvoiceDataFromDoc(doc, order['Order ID']);
+        if (inv) invoiceDataByOrderId[order['Order ID']] = inv;
+      })
+    );
+
+    // Combine orders with cookie details, gifts, and invoice data (when available)
+    const ordersWithDetails = orders.map((order: any) => {
+      const base = {
+        ...order,
+        cookieDetails: cookieDetailsByOrderId[order['Order ID']] || [],
+        gifts: giftsByOrderId[order['Order ID']] || [],
+      };
+      const inv = invoiceDataByOrderId[order['Order ID']];
+      if (inv) {
+        return {
+          ...base,
+          cookieDetails: inv.cookieDetails,
+          extraItems: inv.extraItems,
+          discount: inv.discount,
+          subtotal: inv.subtotal,
+          discountAmount: inv.discountAmount,
+          total: inv.total,
+        };
+      }
+      return base;
+    });
 
     // If request contains role/sales header, apply Sales filtering
     try {
