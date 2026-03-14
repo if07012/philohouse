@@ -133,7 +133,7 @@ export default function InvoicePreviewPage() {
     const name = newItemName.trim();
     const qty = parseInt(newItemQty, 10) || 1;
     const price = parseFloat(newItemPrice) || 0;
-    if (!name || price <= 0) return;
+    if (!name ) return;
     setExtraItems((prev) => [...prev, { name, quantity: qty, unitPrice: price }]);
     setNewItemName("");
     setNewItemQty("1");
