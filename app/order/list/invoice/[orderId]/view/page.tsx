@@ -36,8 +36,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : invoiceData?.total ?? Number(order.Total);
   const title =
     invoiceData?.discountAmount && invoiceData.discountAmount > 0
-      ? `Invoice ${order["Order ID"]} — ${order["Customer Name"]} — ${formatRupiah(total)}`
-      : `Invoice ${order["Order ID"]} — ${order["Customer Name"]}`;
+      ? `Invoice ${order["Customer Name"]} — ${formatRupiah(total)}`
+      : `Invoice ${order["Customer Name"]}`;
   const description = `Invoice ${order["Order ID"]} untuk ${order["Customer Name"]}. Total: ${formatRupiah(total)}.`;
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}/order/list/invoice/${orderId}/view`;
