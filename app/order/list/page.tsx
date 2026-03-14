@@ -17,6 +17,7 @@ interface Order {
   Total: number;
   "Invoice Generated"?: string;
   "Invoice Sent"?: string;
+  gifts?: string[];
   cookieDetails: Array<{
     "Cookie Name": string;
     Size: string;
@@ -552,6 +553,25 @@ export default function OrdersListPage() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Gifts won */}
+                      {order.gifts && order.gifts.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <h3 className="text-sm font-semibold text-dark-blue mb-2">
+                            Hadiah yang didapat:
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {order.gifts.map((gift, idx) => (
+                              <div
+                                key={idx}
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800"
+                              >
+                                🎁 {gift.replace(/<br\s*\/>/g, "\n")}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Cookie Details */}
                       {order.cookieDetails && order.cookieDetails.length > 0 && (

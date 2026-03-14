@@ -17,6 +17,22 @@ export async function GET(request: Request) {
     // Read cookie details
     const cookieDetails = await readSheetData(GOOGLE_SHEET_ID, 'Cookie Details');
 
+    // Read spin rewards (gifts)
+    let giftsByOrderId: Record<string, string[]> = {};
+    try {
+      const spinRows = await readSheetData(GOOGLE_SHEET_ID, 'Spin Rewards');
+      spinRows.forEach((r: any) => {
+        const orderId = r['Order ID'];
+        const gift = r['Gift'] || r.Gift;
+        if (orderId && gift) {
+          if (!giftsByOrderId[orderId]) giftsByOrderId[orderId] = [];
+          giftsByOrderId[orderId].push(String(gift));
+        }
+      });
+    } catch (err) {
+      console.error('Could not read Spin Rewards sheet:', err);
+    }
+
     // Group cookie details by Order ID
     const cookieDetailsByOrderId: Record<string, any[]> = {};
     cookieDetails.forEach((detail: any) => {
@@ -27,10 +43,11 @@ export async function GET(request: Request) {
       cookieDetailsByOrderId[orderId].push(detail);
     });
 
-    // Combine orders with their cookie details
+    // Combine orders with their cookie details and gifts
     const ordersWithDetails = orders.map((order: any) => ({
       ...order,
       cookieDetails: cookieDetailsByOrderId[order['Order ID']] || [],
+      gifts: giftsByOrderId[order['Order ID']] || [],
     }));
 
     // If request contains role/sales header, apply Sales filtering
