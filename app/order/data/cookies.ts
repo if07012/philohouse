@@ -507,6 +507,8 @@ export function buildSheetRow(order: {
   const eligibleForGift = spinFields?.eligibleForGift ?? (getSpinChances(order.total) >= 1 ? "Ya" : "Tidak");
   const spinsUsed = spinFields?.spinsUsed ?? 0;
   const spinCompleted = spinFields?.spinCompleted ?? "Tidak";
+  const invoiceGenerated = spinFields?.invoiceGenerated ?? "";
+  const invoiceSent = spinFields?.invoiceSent ?? "";
   return {
     "Order ID": order.orderId,
     "Order Date": order.orderDate,
@@ -521,6 +523,8 @@ export function buildSheetRow(order: {
     "Eligible for Gift": eligibleForGift,
     "Spins Used": spinsUsed,
     "Spin Completed": spinCompleted,
+    "Invoice Generated": invoiceGenerated,
+    "Invoice Sent": invoiceSent,
   };
 }
 

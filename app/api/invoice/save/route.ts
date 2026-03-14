@@ -100,6 +100,12 @@ export async function POST(request: Request) {
     if (order.Note) {
       rows.push({ Col1: "Note", Col2: order.Note, Col3: "", Col4: "" });
     }
+    rows.push({
+      Col1: "Order Type",
+      Col2: order["Order Type"] || "",
+      Col3: "",
+      Col4: "",
+    });
     rows.push({ Col1: "", Col2: "", Col3: "", Col4: "" });
     rows.push({
       Col1: "Item",
@@ -153,6 +159,19 @@ export async function POST(request: Request) {
       headerValues: headers,
     });
     await newSheet.addRows(rows);
+
+    // Update Orders row: set Invoice Generated date
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+    const ordersSheet = doc.sheetsByTitle["Orders"];
+    if (ordersSheet) {
+      const orderRows = await ordersSheet.getRows();
+      const orderRow = orderRows.find((r: any) => r.get("Order ID") === orderId);
+      if (orderRow) {
+        orderRow.set("Invoice Generated", dateStr);
+        await orderRow.save();
+      }
+    }
 
     return NextResponse.json({
       success: true,

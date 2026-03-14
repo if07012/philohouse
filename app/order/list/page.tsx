@@ -15,6 +15,8 @@ interface Order {
   "Order Type": string;
   Items: string;
   Total: number;
+  "Invoice Generated"?: string;
+  "Invoice Sent"?: string;
   cookieDetails: Array<{
     "Cookie Name": string;
     Size: string;
@@ -90,6 +92,7 @@ export default function OrdersListPage() {
   };
 
   const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
+  const [markingInvoiceSentOrderId, setMarkingInvoiceSentOrderId] = useState<string | null>(null);
 
   const sendOrderToTelegram = async (orderId: string) => {
     try {
@@ -148,6 +151,35 @@ export default function OrdersListPage() {
       alert("Error sending to Telegram");
     } finally {
       setSendingOrderId(null);
+    }
+  };
+
+  const markInvoiceAsSent = async (orderId: string) => {
+    try {
+      setMarkingInvoiceSentOrderId(orderId);
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/invoice-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markSent: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to mark invoice as sent");
+        return;
+      }
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o["Order ID"] !== orderId) return o;
+          const d = new Date();
+          const dateStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+          return { ...o, "Invoice Sent": dateStr };
+        })
+      );
+    } catch (e) {
+      console.error("Error marking invoice as sent:", e);
+      alert("Failed to mark invoice as sent");
+    } finally {
+      setMarkingInvoiceSentOrderId(null);
     }
   };
 
@@ -492,6 +524,33 @@ export default function OrdersListPage() {
                             <span className="text-gray-800">{order.Note}</span>
                           </div>
                         )}
+                        {/* Invoice status - always visible */}
+                        <div className="sm:col-span-2 flex flex-wrap gap-3 text-sm">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium ${
+                              order["Invoice Generated"]
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {order["Invoice Generated"] ? "✓" : "○"} Invoice Generated
+                            {order["Invoice Generated"] && (
+                              <span className="text-xs">({order["Invoice Generated"]})</span>
+                            )}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium ${
+                              order["Invoice Sent"]
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {order["Invoice Sent"] ? "✓" : "○"} Invoice Sent
+                            {order["Invoice Sent"] && (
+                              <span className="text-xs">({order["Invoice Sent"]})</span>
+                            )}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Cookie Details */}
@@ -535,12 +594,30 @@ export default function OrdersListPage() {
                       >
                         {sendingOrderId === order["Order ID"] ? "Sending..." : "Send to Telegram"}
                       </button>
-                      <Link
-                        href={`/order/list/invoice/${encodeURIComponent(order["Order ID"])}`}
-                        className="min-h-[44px] mt-2 rounded-lg bg-primary-pink px-4 py-2 text-sm font-medium text-white text-center transition-colors hover:bg-primary-pink/90 block"
-                      >
-                        Generate Invoice
-                      </Link>
+                      {order["Invoice Generated"] ? (
+                        <Link
+                          href={`/order/list/invoice/${encodeURIComponent(order["Order ID"])}/view`}
+                          className="min-h-[44px] mt-2 rounded-lg bg-primary-pink px-4 py-2 text-sm font-medium text-white text-center transition-colors hover:bg-primary-pink/90 block"
+                        >
+                          View Invoice
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/order/list/invoice/${encodeURIComponent(order["Order ID"])}`}
+                          className="min-h-[44px] mt-2 rounded-lg bg-primary-pink px-4 py-2 text-sm font-medium text-white text-center transition-colors hover:bg-primary-pink/90 block"
+                        >
+                          Generate Invoice
+                        </Link>
+                      )}
+                      {order["Invoice Generated"] && !order["Invoice Sent"] && (
+                        <button
+                          onClick={() => markInvoiceAsSent(order["Order ID"])}
+                          disabled={markingInvoiceSentOrderId === order["Order ID"]}
+                          className="min-h-[44px] mt-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white text-center transition-colors hover:bg-green-700 disabled:opacity-60"
+                        >
+                          {markingInvoiceSentOrderId === order["Order ID"] ? "Marking..." : "Mark Invoice Sent"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

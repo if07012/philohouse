@@ -115,10 +115,14 @@ export async function PUT(
     const existingSpinsUsed = orderRow.get('Spins Used');
     const existingSpinCompleted = orderRow.get('Spin Completed');
     const existingEligibleForGift = orderRow.get('Eligible for Gift');
+    const existingInvoiceGenerated = orderRow.get('Invoice Generated');
+    const existingInvoiceSent = orderRow.get('Invoice Sent');
     const spinFields = {
       eligibleForGift: existingEligibleForGift ?? (getSpinChances(body.orderData.total) >= 1 ? 'Ya' : 'Tidak'),
       spinsUsed: typeof existingSpinsUsed === 'number' ? existingSpinsUsed : (Number(existingSpinsUsed) || 0),
       spinCompleted: ['Ya', 'Tidak', 'Skipped'].includes(String(existingSpinCompleted)) ? String(existingSpinCompleted) : 'Tidak',
+      invoiceGenerated: existingInvoiceGenerated ?? '',
+      invoiceSent: existingInvoiceSent ?? '',
     };
     const updatedOrderRow = buildSheetRow(body.orderData, spinFields);
     

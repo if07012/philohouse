@@ -63,6 +63,9 @@ export default function InvoicePreviewPage() {
   const [newItemPrice, setNewItemPrice] = useState<string>("");
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [markingSent, setMarkingSent] = useState(false);
+  const [invoiceGenerated, setInvoiceGenerated] = useState<string>("");
+  const [invoiceSent, setInvoiceSent] = useState<string>("");
 
   useEffect(() => {
     const isAuthenticated = sessionStorage.getItem("orders_list_authenticated");
@@ -103,6 +106,8 @@ export default function InvoicePreviewPage() {
             Subtotal: Number(c.Subtotal) || 0,
           })),
         });
+        setInvoiceGenerated(o["Invoice Generated"] || "");
+        setInvoiceSent(o["Invoice Sent"] || "");
       } catch (err) {
         console.error("Error fetching order:", err);
         setError("Failed to load order");
@@ -184,6 +189,10 @@ export default function InvoicePreviewPage() {
         return;
       }
 
+      const d = new Date();
+      const dateStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+      setInvoiceGenerated(dateStr);
+
       const blob = await pdf(
         <InvoiceDocument
           order={order as InvoiceOrder}
@@ -204,6 +213,32 @@ export default function InvoicePreviewPage() {
       setSaveError("Failed to generate invoice PDF");
     } finally {
       setGeneratingPdf(false);
+    }
+  };
+
+  const handleMarkAsSent = async () => {
+    if (!order) return;
+    try {
+      setMarkingSent(true);
+      setSaveError(null);
+      const res = await fetch(`/api/orders/${encodeURIComponent(order["Order ID"])}/invoice-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markSent: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setSaveError(err.error || "Failed to mark invoice as sent");
+        return;
+      }
+      const d = new Date();
+      const dateStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+      setInvoiceSent(dateStr);
+    } catch (e) {
+      console.error("Error marking invoice as sent:", e);
+      setSaveError("Failed to mark invoice as sent");
+    } finally {
+      setMarkingSent(false);
     }
   };
 
@@ -247,12 +282,22 @@ export default function InvoicePreviewPage() {
               Order {order["Order ID"]} • Add discount and generate PDF
             </p>
           </div>
-          <Link
-            href="/order/list"
-            className="inline-block min-h-[44px] rounded-xl bg-gray-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-gray-700 text-center"
-          >
-            Back to List
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/order/list"
+              className="inline-block min-h-[44px] rounded-xl bg-gray-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-gray-700 text-center"
+            >
+              Back to List
+            </Link>
+            {invoiceGenerated && (
+              <Link
+                href={`/order/list/invoice/${encodeURIComponent(order["Order ID"])}/view`}
+                className="inline-block min-h-[44px] rounded-xl bg-dark-blue px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-dark-blue/90 text-center"
+              >
+                View Invoice
+              </Link>
+            )}
+          </div>
         </header>
 
         <div className="rounded-xl bg-white p-6 shadow-md space-y-6">
@@ -471,7 +516,23 @@ export default function InvoicePreviewPage() {
             </div>
           )}
 
-          {/* Generate PDF */}
+          {/* Invoice status */}
+          {(invoiceGenerated || invoiceSent) && (
+            <div className="flex flex-wrap gap-4 text-sm text-gray-600 pt-2">
+              {invoiceGenerated && (
+                <span>
+                  <strong>Invoice Generated:</strong> {invoiceGenerated}
+                </span>
+              )}
+              {invoiceSent && (
+                <span>
+                  <strong>Invoice Sent:</strong> {invoiceSent}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Generate PDF & Mark Sent */}
           <div className="flex flex-wrap gap-3 pt-4">
             <button
               onClick={handleGeneratePdf}
@@ -480,6 +541,15 @@ export default function InvoicePreviewPage() {
             >
               {generatingPdf ? "Generating PDF..." : "Generate Invoice PDF"}
             </button>
+            {invoiceGenerated && !invoiceSent && (
+              <button
+                onClick={handleMarkAsSent}
+                disabled={markingSent}
+                className="min-h-[48px] rounded-xl bg-green-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-green-700 disabled:opacity-60"
+              >
+                {markingSent ? "Marking..." : "Mark Invoice as Sent"}
+              </button>
+            )}
             <Link
               href="/order/list"
               className="inline-flex items-center min-h-[48px] rounded-xl bg-gray-200 px-6 py-3 text-base font-semibold text-gray-800 hover:bg-gray-300"
