@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   section: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 11,
@@ -200,10 +200,6 @@ export function InvoiceDocument({
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Image source="/cookies/logo.png" style={styles.logo} />
-          <Text style={styles.title}>INVOICE</Text>
-          <Text style={styles.subtitle}>
-            Order #{order["Order ID"]} • {order["Order Date"]} • {order["Order Type"]}
-          </Text>
         </View>
 
         <View style={styles.section}>

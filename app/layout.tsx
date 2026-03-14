@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Philihouse.id — Fresh, Small-Batch Cookies Made for Smiles 🍪",
   description: "Handcrafted cookies made with premium ingredients. Perfect for gifts or daily treats. Order now for fresh delivery!",
+  icons: {
+    icon: "/cookies/logo.png",
+    shortcut: "/cookies/logo.png",
+    apple: "/cookies/logo.png",
+  },
 };
 
 export default function RootLayout({
