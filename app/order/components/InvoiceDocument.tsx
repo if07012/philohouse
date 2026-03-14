@@ -6,6 +6,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Image,
 } from "@react-pdf/renderer";
 
 export interface InvoiceOrder {
@@ -45,14 +46,15 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
     borderBottomWidth: 2,
-    borderBottomColor: "#1e3a5f",
+    borderBottomColor: "#5b9ea0",
     paddingBottom: 12,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#1e3a5f",
+    color: "#5b9ea0",
     marginBottom: 4,
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 10,
@@ -64,7 +66,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: "bold",
-    color: "#1e3a5f",
+    color: "#5b9ea0",
     marginBottom: 6,
   },
   row: {
@@ -84,7 +86,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#1e3a5f",
+    backgroundColor: "#5b9ea0",
     color: "#fff",
     padding: 8,
     fontWeight: "bold",
@@ -104,7 +106,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 2,
-    borderTopColor: "#1e3a5f",
+    borderTopColor: "#5b9ea0",
     alignItems: "flex-end",
   },
   totalRow: {
@@ -121,14 +123,11 @@ const styles = StyleSheet.create({
   },
   totalValue: {
     fontWeight: "bold",
-    fontSize: 12,
     minWidth: 90,
     textAlign: "right",
   },
   totalValueFinal: {
     fontWeight: "bold",
-    fontSize: 14,
-    color: "#e91e63",
     marginTop: 4,
   },
   discountRow: {
@@ -136,12 +135,19 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: "absolute",
-    bottom: 30,
+    bottom: 20,
     left: 40,
     right: 40,
-    textAlign: "center",
-    fontSize: 8,
-    color: "#888",
+    fontSize: 12,
+    backgroundColor: "#5b9ea0",
+    padding: 12,
+    color: "#fff",
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  logo: {
   },
 });
 
@@ -193,6 +199,7 @@ export function InvoiceDocument({
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
+          <Image source="/cookies/logo.png" style={styles.logo} />
           <Text style={styles.title}>INVOICE</Text>
           <Text style={styles.subtitle}>
             Order #{order["Order ID"]} • {order["Order Date"]} • {order["Order Type"]}
@@ -266,17 +273,33 @@ export function InvoiceDocument({
                 </Text>
               </View>
             )}
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={[styles.totalValue, styles.totalValueFinal]}>
-                {formatRupiah(finalTotal)}
-              </Text>
+            <View style={styles.totalSection}>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={[styles.totalValue]}>
+                  {formatRupiah(finalTotal)}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.footer} fixed>
-          <Text>Invoice for Order {order["Order ID"]} • Generated on {new Date().toLocaleDateString("id-ID")}</Text>
+        <View style={styles.footer}>
+          <View style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-start",
+            alignItems: "flex-start",
+            lineHeight: .875,
+          }}>
+            <Text style={{ fontWeight: "bold" }}>Pembayaran ke :</Text>
+            <Text style={{ fontWeight: "400" }}>Euis Maesyaroh</Text>
+            <Text style={{ fontWeight: "400" }}>639 562 6225 (BCA)</Text>
+            <Text></Text>
+          </View>
+          <View style={styles.row}>
+            <Text>Terima kasih</Text>
+          </View>
         </View>
       </Page>
     </Document>
