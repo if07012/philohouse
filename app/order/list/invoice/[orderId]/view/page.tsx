@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Head from "next/head";
 import { useParams } from "next/navigation";
 import { pdf } from "@react-pdf/renderer";
 import {
@@ -62,6 +63,16 @@ export default function InvoiceViewPage() {
   const [subtotalOverride, setSubtotalOverride] = useState<number | undefined>(undefined);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [totalAfterDiscount, setTotalAfterDiscount] = useState<number | undefined>(undefined);
+
+  const pageTitle = order
+    ? `Invoice ${order["Order ID"]} — ${order["Customer Name"]}`
+    : "Invoice";
+
+  const pageDescription = order
+    ? `Invoice ${order["Order ID"]} for ${order["Customer Name"]}. Total: ${formatRupiah(
+        totalAfterDiscount ?? Number(order.Total)
+      )}. Download at ${typeof window !== "undefined" ? window.location.origin : ""}/order/list/invoice/${order["Order ID"]}/view`
+    : "View invoice details";
 
   useEffect(() => {
     const auth = sessionStorage.getItem("orders_list_authenticated");
@@ -236,6 +247,13 @@ export default function InvoiceViewPage() {
   }
 
   return (
+    <>
+      <Head>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+      </Head>
     <div className="min-h-screen bg-gray-100 pb-8">
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
