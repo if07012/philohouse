@@ -102,13 +102,7 @@ export async function ensureSheetWithHeaders(
   if (!sheet) {
     sheet = await doc.addSheet({ title: sheetName, headerValues: headers });
   } else {
-    // Ensure headers contain required ones
-    const currentHeaders = sheet.headerValues || [];
-    const missing = headers.filter((h) => !currentHeaders.includes(h));
-    if (missing.length > 0) {
-      // sheet.headerValues = [...currentHeaders, ...missing];
-      await sheet.saveUpdatedCells();
-    }
+    
   }
   return sheet;
 }

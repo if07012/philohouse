@@ -20,7 +20,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #071215;
+    --color-bg: #ffffff;
     --color-fg: #dbecee;
   }
 }
@@ -84,4 +84,122 @@ body {
 }
 .bg-soft-sand{
   background-color: var(--color-soft-sand);
+}
+
+/* Grade 4 exam material preview (Markdown → HTML) */
+.exam-material-md {
+  max-width: 100%;
+  line-height: 1.6;
+}
+
+.exam-material-md h1,
+.exam-material-md h2,
+.exam-material-md h3 {
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.exam-material-md h1 {
+  font-size: 1.375rem;
+}
+
+.exam-material-md h2 {
+  font-size: 1.2rem;
+}
+
+.exam-material-md h3 {
+  font-size: 1.05rem;
+}
+
+.exam-material-md p {
+  margin-top: 0.75em;
+}
+
+.exam-material-md p:first-child {
+  margin-top: 0;
+}
+
+.exam-material-md ul,
+.exam-material-md ol {
+  margin: 0.5em 0;
+  padding-left: 1.5rem;
+}
+
+.exam-material-md ul {
+  list-style-type: disc;
+}
+
+.exam-material-md ol {
+  list-style-type: decimal;
+}
+
+.exam-material-md li {
+  margin-top: 0.35em;
+}
+
+.exam-material-md li::marker {
+  color: var(--color-accent);
+}
+
+.exam-material-md blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: rgba(0, 0, 0, 0.68);
+}
+
+.exam-material-md pre {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: rgba(51, 78, 88, 0.08);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+.exam-material-md code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  background: rgba(51, 78, 88, 0.08);
+}
+
+.exam-material-md pre code {
+  padding: 0;
+  background: none;
+}
+
+.exam-material-md hr {
+  margin: 1.25rem 0;
+  border: 0;
+  border-top: 1px solid rgba(51, 78, 88, 0.15);
+}
+
+.exam-material-md a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.exam-material-md table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.95rem;
+}
+
+.exam-material-md th,
+.exam-material-md td {
+  border: 1px solid rgba(51, 78, 88, 0.2);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.exam-material-md th {
+  background: rgba(91, 158, 160, 0.12);
+  font-weight: 600;
 }

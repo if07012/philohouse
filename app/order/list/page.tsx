@@ -143,8 +143,6 @@ export default function OrdersListPage() {
         salesWhatsapp: WHATSAPP_NUMBER[order['Sales'] || order.Sales || ""]
       };
 
-      console.log("Order payload for Telegram:", orderPayload);
-      console.log("WhatsApp number for sales:", WHATSAPP_NUMBER);
       const message = buildTelegramOrderMessage(orderPayload as any);
       const sendRes = await fetch("/api/telegram/send", {
         method: "POST",
@@ -349,7 +347,6 @@ export default function OrdersListPage() {
   });
   const resultsCount = viewMode === "orders" ? filteredOrders.length : viewMode === "grouped" ? filteredGroupedData.length : filteredGroupedWhatsAppData.length;
   const totalCount = viewMode === "orders" ? orders.length : viewMode === "grouped" ? groupedArray.length : groupedWhatsAppArray.length;
-  console.log(filteredGroupedWhatsAppData)
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
