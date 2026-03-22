@@ -68,7 +68,7 @@ Rules:
 - Essay: prompts should be achievable in a short paragraph. modelAnswer is a concise exemplar; gradingReference lists 3–5 bullet criteria for grading.`;
 
 function buildGenerationUserPrompt(material: MaterialRow): string {
-  return `Create an exam from this material.
+  return `Create an exam from this material. response in bahasa indonesia
 
 Material title: ${material.title}
 
