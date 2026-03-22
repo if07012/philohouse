@@ -1,10 +1,10 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { markdownToSafeHtml } from "../../lib/markdownToHtml";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import Markdown from 'react-markdown'
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   clearExamState,
   createFreshState,
@@ -73,11 +73,7 @@ export default function MaterialPreviewPage() {
 
   const nQuestions = data?.questions?.length ?? 0;
 
-  const materialHtml = useMemo(() => {
-    const raw = data?.materialContent ?? "";
-    if (!raw.trim()) return "";
-    return markdownToSafeHtml(raw);
-  }, [data?.materialContent]);
+  const materialMd = (data?.materialContent ?? "").trim();
 
   return (
     <main className="min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)]">
@@ -111,12 +107,12 @@ export default function MaterialPreviewPage() {
             </p>
 
             <article className="card-soft mt-6 max-h-[min(60vh,480px)] overflow-y-auto p-6 text-base text-[var(--color-fg)]">
-              {materialHtml ? (
-                
-                <div
-                  className="exam-material-md"
-                  dangerouslySetInnerHTML={{ __html: materialHtml }}
-                />
+              {materialMd ? (
+                <div className="exam-material-md">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {data.materialContent}
+                  </ReactMarkdown>
+                </div>
               ) : (
                 <p className="text-black/55">
                   No text in the sheet for this topic. Ask your teacher to add content

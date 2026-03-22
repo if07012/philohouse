@@ -14,13 +14,12 @@
     "axios": "^1.13.5",
     "google-auth-library": "^10.5.0",
     "google-spreadsheet": "^5.0.2",
-    "isomorphic-dompurify": "^3.6.0",
-    "marked": "^17.0.5",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-google-recaptcha-v3": "^1.11.0",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
