@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #F7FAF8;
+  --color-bg: white;
   /* calm cream */
   --color-fg: #334E58;
   /* muted navy */
@@ -20,8 +20,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #ffffff;
-    --color-fg: #dbecee;
+    --color-bg: white;
+    --color-fg: black;
   }
 }
 
