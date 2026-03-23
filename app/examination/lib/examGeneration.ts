@@ -46,11 +46,25 @@ function normalizeMaterial(m: Record<string, string>): MaterialRow | null {
     m.material_id || m.Material_ID || m["Material ID"] || m.id || "";
   const title = m.title || m.Title || "";
   const content = m.content || m.Content || m.text || m.Text || "";
-  if (!String(material_id).trim() || !String(content).trim()) return null;
+  const image_url =
+    m.image_url ||
+    m.imageUrl ||
+    m.Image_URL ||
+    m["Image URL"] ||
+    m.image ||
+    m.Image ||
+    "";
+  if (
+    !String(material_id).trim() ||
+    (!String(content).trim() && !String(image_url).trim())
+  ) {
+    return null;
+  }
   return {
     material_id: String(material_id).trim(),
     title: String(title).trim() || "Untitled",
     content: String(content).trim(),
+    image_url: String(image_url).trim(),
   };
 }
 

@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EXAM_GENERATION_COUNTS } from "./lib/constants";
 
-type Material = { material_id: string; title: string; content: string };
+type Material = {
+  material_id: string;
+  title: string;
+  content: string;
+  image_url: string;
+};
 type ExamMeta = {
   exam_id: string;
   material_id: string;
@@ -114,7 +119,8 @@ export default function ExaminationHubPage() {
             Tab <code className="rounded bg-black/5 px-1">Materials</code>:{" "}
             <code className="rounded bg-black/5 px-1">material_id</code>,{" "}
             <code className="rounded bg-black/5 px-1">title</code>,{" "}
-            <code className="rounded bg-black/5 px-1">content</code>.
+            <code className="rounded bg-black/5 px-1">content</code>,{" "}
+            <code className="rounded bg-black/5 px-1">image_url</code>.
           </p>
           {loadingMaterials ? (
             <p className="mt-4 text-sm text-black/60">Loading…</p>

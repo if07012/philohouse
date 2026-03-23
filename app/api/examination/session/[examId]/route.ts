@@ -38,7 +38,10 @@ export async function GET(
       materialId,
       materialTitle: material?.title ?? "",
       ...(includeMaterial
-        ? { materialContent: material?.content ?? "" }
+        ? {
+            materialContent: material?.content ?? "",
+            materialImageUrl: material?.image_url ?? "",
+          }
         : {}),
       questions,
     });

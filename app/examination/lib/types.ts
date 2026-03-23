@@ -7,7 +7,12 @@ export const EXAM_SHEETS = {
   submissions: "ExamSubmissions",
 } as const;
 
-export const MATERIAL_HEADERS = ["material_id", "title", "content"] as const;
+export const MATERIAL_HEADERS = [
+  "material_id",
+  "title",
+  "content",
+  "image_url",
+] as const;
 export const EXAM_HEADERS = [
   "exam_id",
   "material_id",
@@ -42,6 +47,7 @@ export type MaterialRow = {
   material_id: string;
   title: string;
   content: string;
+  image_url: string;
 };
 
 export type ExamMetaRow = {
