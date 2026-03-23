@@ -21,6 +21,9 @@ export async function GET(
     const includeMaterial =
       url.searchParams.get("includeMaterial") === "1" ||
       url.searchParams.get("includeMaterial") === "true";
+    const includeAnswerKey =
+      url.searchParams.get("includeAnswerKey") === "1" ||
+      url.searchParams.get("includeAnswerKey") === "true";
 
     const spreadsheetId = getGrade4ExamSpreadsheetId();
     await ensureExamSheets(spreadsheetId);
@@ -32,6 +35,12 @@ export async function GET(
     const materialId = rows[0].material_id;
     const material = await findMaterial(spreadsheetId, materialId);
     const questions = toPublicQuestions(rows);
+    const answerKey = includeAnswerKey
+      ? Object.fromEntries(rows.map((r) => [r.question_id, r.correct_answer || ""]))
+      : undefined;
+    const gradingReference = includeAnswerKey
+      ? Object.fromEntries(rows.map((r) => [r.question_id, r.grading_reference || ""]))
+      : undefined;
 
     return NextResponse.json({
       examId: examId.trim(),
@@ -41,6 +50,12 @@ export async function GET(
         ? {
             materialContent: material?.content ?? "",
             materialImageUrl: material?.image_url ?? "",
+          }
+        : {}),
+      ...(includeAnswerKey
+        ? {
+            answerKey,
+            gradingReference,
           }
         : {}),
       questions,

@@ -17,6 +17,8 @@ function ExamResultsContent() {
   const [questions, setQuestions] = useState<PublicExamQuestion[]>([]);
   const [title, setTitle] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answerKey, setAnswerKey] = useState<Record<string, string>>({});
+  const [gradingReference, setGradingReference] = useState<Record<string, string>>({});
   const [evaluation, setEvaluation] = useState<EvaluationItem[]>([]);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [submissionId, setSubmissionId] = useState<string | null>(null);
@@ -56,11 +58,13 @@ function ExamResultsContent() {
           setSource("sheet");
 
           const sessionRes = await fetch(
-            `/api/examination/session/${encodeURIComponent(examId)}`
+            `/api/examination/session/${encodeURIComponent(examId)}?includeAnswerKey=1`
           );
           const sessionJson = await sessionRes.json();
           if (sessionRes.ok && !cancelled) {
             setQuestions(sessionJson.questions || []);
+            setAnswerKey(sessionJson.answerKey || {});
+            setGradingReference(sessionJson.gradingReference || {});
           }
         } catch {
           if (!cancelled) {
@@ -86,11 +90,15 @@ function ExamResultsContent() {
       setSubmissionId(stored.submissionId ?? null);
       setSource("local");
 
-      const res = await fetch(`/api/examination/session/${encodeURIComponent(examId)}`);
+      const res = await fetch(
+        `/api/examination/session/${encodeURIComponent(examId)}?includeAnswerKey=1`
+      );
       const json = await res.json();
       if (res.ok && !cancelled) {
         setQuestions(json.questions || []);
         setTitle(json.materialTitle || "Exam");
+        setAnswerKey(json.answerKey || {});
+        setGradingReference(json.gradingReference || {});
       }
       if (!cancelled) setLoading(false);
     })();
@@ -152,6 +160,46 @@ function ExamResultsContent() {
             : letter;
         })
         .join(", ");
+    }
+    return raw;
+  };
+
+  const formatCorrectAnswer = (q: PublicExamQuestion): string => {
+    const raw = (answerKey[q.question_id] ?? "").trim();
+    if (!raw) return "Not available";
+    if (q.type === "mcq_single") {
+      const idx = raw.charCodeAt(0) - 65;
+      if (idx >= 0 && idx < q.options.length) {
+        return `${raw} — ${q.options[idx]}`;
+      }
+      return raw;
+    }
+    if (q.type === "mcq_multi") {
+      const letters = raw
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+      if (!letters.length) return "Not available";
+      return letters
+        .map((letter) => {
+          const idx = letter.charCodeAt(0) - 65;
+          return idx >= 0 && idx < q.options.length
+            ? `${letter} — ${q.options[idx]}`
+            : letter;
+        })
+        .join(", ");
+    }
+    if (q.type === "fill_blank") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const vals = parsed.map((v) => String(v).trim()).filter(Boolean);
+          return vals.length ? vals.join(", ") : "Not available";
+        }
+      } catch {
+        return raw;
+      }
+      return raw;
     }
     return raw;
   };
@@ -252,6 +300,20 @@ function ExamResultsContent() {
                   <p className="mt-1 whitespace-pre-wrap text-black/80">
                     {formatUserAnswer(q)}
                   </p>
+                </div>
+                <div className="mt-3 rounded-lg bg-black/[0.04] px-4 py-3 text-sm">
+                  <p className="font-semibold text-black/75">
+                    {q.type === "essay" ? "Model answer" : "Correct answer"}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-black/80">
+                    {formatCorrectAnswer(q)}
+                  </p>
+                  {q.type === "essay" && gradingReference[q.question_id] ? (
+                    <p className="mt-2 whitespace-pre-wrap text-black/65">
+                      <span className="font-medium">Grading reference: </span>
+                      {gradingReference[q.question_id]}
+                    </p>
+                  ) : null}
                 </div>
                 {ev && (
                   <div className="mt-4 rounded-lg bg-black/[0.04] px-4 py-3 text-sm">
