@@ -16,6 +16,7 @@ function ExamResultsContent() {
 
   const [questions, setQuestions] = useState<PublicExamQuestion[]>([]);
   const [title, setTitle] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [evaluation, setEvaluation] = useState<EvaluationItem[]>([]);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [submissionId, setSubmissionId] = useState<string | null>(null);
@@ -48,6 +49,7 @@ function ExamResultsContent() {
 
           setEvaluation(subJson.evaluation || []);
           setExplanations(subJson.explanations || {});
+          setAnswers(subJson.answers || {});
           setSubmissionId(subJson.submission_id ?? sid);
           setSubmittedAt(subJson.submitted_at ?? null);
           setTitle(subJson.materialTitle || "Exam");
@@ -80,6 +82,7 @@ function ExamResultsContent() {
 
       setEvaluation(stored.results.evaluation);
       setExplanations(stored.results.explanations);
+      setAnswers(stored.answers || {});
       setSubmissionId(stored.submissionId ?? null);
       setSource("local");
 
@@ -124,6 +127,34 @@ function ExamResultsContent() {
     typeof window !== "undefined" && submissionId
       ? `${window.location.origin}/examination/${examId}/results?sid=${encodeURIComponent(submissionId)}`
       : null;
+
+  const formatUserAnswer = (q: PublicExamQuestion): string => {
+    const raw = (answers[q.question_id] ?? "").trim();
+    if (!raw) return "No answer";
+    if (q.type === "mcq_single") {
+      const idx = raw.charCodeAt(0) - 65;
+      if (idx >= 0 && idx < q.options.length) {
+        return `${raw} — ${q.options[idx]}`;
+      }
+      return raw;
+    }
+    if (q.type === "mcq_multi") {
+      const letters = raw
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+      if (!letters.length) return "No answer";
+      return letters
+        .map((letter) => {
+          const idx = letter.charCodeAt(0) - 65;
+          return idx >= 0 && idx < q.options.length
+            ? `${letter} — ${q.options[idx]}`
+            : letter;
+        })
+        .join(", ");
+    }
+    return raw;
+  };
 
   if (loading && !loadError) {
     return (
@@ -216,6 +247,12 @@ function ExamResultsContent() {
                   Q{q.order_index} · {questionTypeLabel(q.type)}
                 </p>
                 <p className="mt-2 font-medium">{q.question_text}</p>
+                <div className="mt-3 rounded-lg bg-black/[0.04] px-4 py-3 text-sm">
+                  <p className="font-semibold text-black/75">Your answer</p>
+                  <p className="mt-1 whitespace-pre-wrap text-black/80">
+                    {formatUserAnswer(q)}
+                  </p>
+                </div>
                 {ev && (
                   <div className="mt-4 rounded-lg bg-black/[0.04] px-4 py-3 text-sm">
                     {q.type === "essay" ? (

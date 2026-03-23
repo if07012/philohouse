@@ -64,6 +64,17 @@ export async function GET(
       typeof evaluationPayload.explanations === "object"
         ? evaluationPayload.explanations
         : {};
+    let answers: Record<string, string> = {};
+    try {
+      const parsed = JSON.parse(row.answers_json || "{}");
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        answers = Object.fromEntries(
+          Object.entries(parsed).map(([k, v]) => [k, String(v ?? "")])
+        );
+      }
+    } catch {
+      answers = {};
+    }
 
     const material = await findMaterial(spreadsheetId, row.material_id);
 
@@ -73,6 +84,7 @@ export async function GET(
       material_id: row.material_id,
       submitted_at: row.submitted_at,
       materialTitle: material?.title ?? "",
+      answers,
       evaluation,
       explanations,
     });
