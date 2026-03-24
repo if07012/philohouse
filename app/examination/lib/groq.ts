@@ -6,6 +6,8 @@ export async function groqChatJson<T>(params: {
   system: string;
   user: string;
   maxTokens?: number;
+  /** Default 0.4; use higher values when you need more creative variation (e.g. question generation). */
+  temperature?: number;
 }): Promise<T> {
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -19,7 +21,7 @@ export async function groqChatJson<T>(params: {
         { role: "system", content: params.system },
         { role: "user", content: params.user },
       ] satisfies GroqMessage[],
-      temperature: 0.4,
+      temperature: params.temperature ?? 0.4,
       max_tokens: params.maxTokens ?? 8192,
       response_format: { type: "json_object" },
     }),

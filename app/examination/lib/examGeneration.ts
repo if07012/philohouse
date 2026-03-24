@@ -79,9 +79,23 @@ Rules:
 - Questions must be based ONLY on the provided learning material. Do not invent facts not supported by the material.
 - Multiple choice: exactly four options; one clearly best answer (single) or multiple correct (multi) as specified.
 - Fill-in-the-blank: use a single blank marked as _____ in the question text. acceptableAnswers should include correct spellings and obvious variants (case-insensitive matching will be used later).
-- Essay: prompts should be achievable in a short paragraph. modelAnswer is a concise exemplar; gradingReference lists 3–5 bullet criteria for grading.`;
+- Essay: prompts should be achievable in a short paragraph. modelAnswer is a concise exemplar; gradingReference lists 3–5 bullet criteria for grading.
+- Variety: Each run must feel like a NEW exam. Mix recall, simple application, and light inference (still only from the material). Rotate which concepts you emphasize. If "Previously used question stems" appear, do NOT copy or lightly paraphrase them; ask about different details, use different angles, and fresh distractors while staying faithful to the material.`;
 
-function buildGenerationUserPrompt(material: MaterialRow): string {
+function buildGenerationUserPrompt(
+  material: MaterialRow,
+  priorQuestionTexts: string[],
+  variationId: string
+): string {
+  const priorBlock =
+    priorQuestionTexts.length === 0
+      ? ""
+      : `
+
+Previously used question stems from older exams on this SAME material (do not repeat or near-duplicate these; teach additional facets of the material instead):
+${priorQuestionTexts.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+`;
+
   return `Create an exam from this material. response in bahasa indonesia
 
 Material title: ${material.title}
@@ -90,6 +104,8 @@ Material content:
 ---
 ${material.content}
 ---
+${priorBlock}
+Variation seed (for your internal diversity; output only the JSON schema below): ${variationId}
 
 Return a JSON object with exactly these keys and array lengths:
 - "mcq_single": array of length ${COUNTS.mcq_single}
@@ -207,12 +223,15 @@ function rowsFromPayload(
 }
 
 export async function generateExamQuestionRows(
-  material: MaterialRow
+  material: MaterialRow,
+  priorQuestionTexts: string[] = []
 ): Promise<{ examId: string; rows: ExamQuestionRow[] }> {
+  const variationId = crypto.randomUUID();
   const payload = await groqChatJson<GenerationPayload>({
     system: GENERATION_SYSTEM,
-    user: buildGenerationUserPrompt(material),
+    user: buildGenerationUserPrompt(material, priorQuestionTexts, variationId),
     maxTokens: 12000,
+    temperature: 0.82,
   });
   validatePayload(payload);
   const examId = crypto.randomUUID();

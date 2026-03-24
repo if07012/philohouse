@@ -134,6 +134,49 @@ export async function listExams(spreadsheetId: string): Promise<ExamMetaRow[]> {
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
+/** Cap how many prior question stems we send to the model (token budget). */
+const MAX_PRIOR_QUESTION_TEXTS_FOR_GENERATION = 48;
+
+/**
+ * Question stems from previous exams for this material (newest exams first),
+ * deduped so generation prompts stay smaller. Used to ask the LLM for non-repetitive items.
+ */
+export async function listPriorQuestionTextsForMaterial(
+  spreadsheetId: string,
+  materialId: string
+): Promise<string[]> {
+  const exams = await listExams(spreadsheetId);
+  const examIdsForMaterial = exams
+    .filter((e) => e.material_id === materialId)
+    .map((e) => e.exam_id);
+  if (examIdsForMaterial.length === 0) return [];
+
+  const examOrder = new Map(examIdsForMaterial.map((id, i) => [id, i]));
+  const rows = await readSheetData(spreadsheetId, EXAM_SHEETS.questions);
+  const forMaterial = (rows as Record<string, string>[]).filter(
+    (r) => r.material_id === materialId && examOrder.has(r.exam_id)
+  );
+  forMaterial.sort((a, b) => {
+    const oa = examOrder.get(a.exam_id) ?? 999;
+    const ob = examOrder.get(b.exam_id) ?? 999;
+    if (oa !== ob) return oa - ob;
+    return Number(a.order_index || 0) - Number(b.order_index || 0);
+  });
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of forMaterial) {
+    const t = (r.question_text || "").trim();
+    if (!t) continue;
+    const key = t.toLowerCase().replace(/\s+/g, " ");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+    if (out.length >= MAX_PRIOR_QUESTION_TEXTS_FOR_GENERATION) break;
+  }
+  return out;
+}
+
 export async function loadQuestionsForExam(
   spreadsheetId: string,
   examId: string

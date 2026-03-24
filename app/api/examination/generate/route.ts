@@ -8,6 +8,7 @@ import {
   appendQuestionRows,
   ensureExamSheets,
   findMaterial,
+  listPriorQuestionTextsForMaterial,
 } from "@/app/examination/lib/sheetHelpers";
 
 export async function POST(request: Request) {
@@ -32,7 +33,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const { examId, rows } = await generateExamQuestionRows(material);
+    const priorQuestionTexts = await listPriorQuestionTextsForMaterial(
+      spreadsheetId,
+      material.material_id
+    );
+    const { examId, rows } = await generateExamQuestionRows(
+      material,
+      priorQuestionTexts
+    );
 
     const created_at = new Date().toISOString();
     await appendExamMeta(spreadsheetId, {
