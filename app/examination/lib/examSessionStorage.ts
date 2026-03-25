@@ -9,6 +9,7 @@ export type ExamPersistedState = {
   /** Serialized multi-select as sorted comma letters e.g. "A,C" */
   multiAnswers: Record<string, string>;
   flagged: Record<string, boolean>;
+  hintUsed?: Record<string, boolean>;
   currentIndex: number;
   submitted: boolean;
   submissionId?: string;
@@ -50,6 +51,7 @@ export function buildPersistedState(params: {
   answers: Record<string, string>;
   multiSelections: Record<string, Set<string>>;
   flagged: Record<string, boolean>;
+  hintUsed?: Record<string, boolean>;
   currentIndex: number;
   submitted: boolean;
   submissionId?: string;
@@ -65,6 +67,7 @@ export function buildPersistedState(params: {
     answers: params.answers,
     multiAnswers,
     flagged: params.flagged,
+    hintUsed: params.hintUsed ?? {},
     currentIndex: params.currentIndex,
     submitted: params.submitted,
     submissionId: params.submissionId,
@@ -79,6 +82,7 @@ export function createFreshState(examId: string): ExamPersistedState {
     answers: {},
     multiAnswers: {},
     flagged: {},
+    hintUsed: {},
     currentIndex: 0,
     submitted: false,
   };

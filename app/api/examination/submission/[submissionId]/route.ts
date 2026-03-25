@@ -75,6 +75,15 @@ export async function GET(
     } catch {
       answers = {};
     }
+    let hintQuestionIds: string[] = [];
+    try {
+      const parsed = JSON.parse(row.hint_question_ids || "[]");
+      if (Array.isArray(parsed)) {
+        hintQuestionIds = parsed.map((v) => String(v)).filter(Boolean);
+      }
+    } catch {
+      hintQuestionIds = [];
+    }
 
     const material = await findMaterial(spreadsheetId, row.material_id);
 
@@ -85,6 +94,7 @@ export async function GET(
       submitted_at: row.submitted_at,
       materialTitle: material?.title ?? "",
       answers,
+      hintQuestionIds,
       evaluation,
       explanations,
     });

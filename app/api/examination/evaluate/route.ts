@@ -22,6 +22,9 @@ export async function POST(request: Request) {
     const flaggedQuestionIds = Array.isArray(body?.flaggedQuestionIds)
       ? (body.flaggedQuestionIds as string[])
       : [];
+    const hintQuestionIds = Array.isArray(body?.hintQuestionIds)
+      ? (body.hintQuestionIds as string[])
+      : [];
 
     if (!examId?.trim()) {
       return NextResponse.json({ error: "examId is required" }, { status: 400 });
@@ -77,6 +80,7 @@ export async function POST(request: Request) {
         answers_json: JSON.stringify(answers),
         evaluation_json: JSON.stringify(evaluationPayload),
         flagged_question_ids: JSON.stringify(flaggedQuestionIds),
+        hint_question_ids: JSON.stringify(hintQuestionIds),
       });
 
       if (notifyTelegram) {

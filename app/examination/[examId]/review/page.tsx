@@ -30,6 +30,7 @@ export default function ExamReviewPage() {
     Record<string, Set<string>>
   >({});
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
+  const [hintUsed, setHintUsed] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [guardActive, setGuardActive] = useState(false);
 
@@ -37,7 +38,8 @@ export default function ExamReviewPage() {
     (
       nextAnswers: Record<string, string>,
       nextMulti: Record<string, Set<string>>,
-      nextFlagged: Record<string, boolean>
+      nextFlagged: Record<string, boolean>,
+      nextHintUsed: Record<string, boolean>
     ) => {
       const prev = loadExamState(examId);
       saveExamState(
@@ -46,6 +48,7 @@ export default function ExamReviewPage() {
           answers: nextAnswers,
           multiSelections: nextMulti,
           flagged: nextFlagged,
+          hintUsed: nextHintUsed,
           currentIndex: prev?.currentIndex ?? 0,
           submitted: false,
           submissionId: prev?.submissionId,
@@ -80,6 +83,7 @@ export default function ExamReviewPage() {
           setAnswers(stored.answers);
           setMultiSelections(multiSelectionsFromState(stored.multiAnswers));
           setFlagged(stored.flagged);
+          setHintUsed(stored.hintUsed ?? {});
         } else {
           router.replace(`/examination/${examId}/preview`);
         }
@@ -105,6 +109,9 @@ export default function ExamReviewPage() {
 
   const flaggedQuestions = questions.filter((q) => flagged[q.question_id]);
   const flaggedIds = flaggedQuestions.map((q) => q.question_id);
+  const hintQuestionIds = questions
+    .filter((q) => Boolean(hintUsed[q.question_id]))
+    .map((q) => q.question_id);
 
   const submitFinal = async () => {
     setError(null);
@@ -137,6 +144,7 @@ export default function ExamReviewPage() {
           examId,
           answers: merged,
           flaggedQuestionIds: flaggedIds,
+          hintQuestionIds,
           persist: true,
         }),
       });
@@ -150,6 +158,7 @@ export default function ExamReviewPage() {
           answers,
           multiSelections,
           flagged,
+          hintUsed,
           currentIndex: prev?.currentIndex ?? 0,
           submitted: true,
           submissionId: json.submissionId,
@@ -244,7 +253,7 @@ export default function ExamReviewPage() {
                     onSingle={(letter) => {
                       const next = { ...answers, [q.question_id]: letter };
                       setAnswers(next);
-                      persistAll(next, multiSelections, flagged);
+                      persistAll(next, multiSelections, flagged, hintUsed);
                     }}
                     onToggleMulti={(letter) => {
                       const set = new Set(multiSelections[q.question_id] || []);
@@ -252,12 +261,12 @@ export default function ExamReviewPage() {
                       else set.add(letter);
                       const nextM = { ...multiSelections, [q.question_id]: set };
                       setMultiSelections(nextM);
-                      persistAll(answers, nextM, flagged);
+                      persistAll(answers, nextM, flagged, hintUsed);
                     }}
                     onText={(value) => {
                       const next = { ...answers, [q.question_id]: value };
                       setAnswers(next);
-                      persistAll(next, multiSelections, flagged);
+                      persistAll(next, multiSelections, flagged, hintUsed);
                     }}
                   />
                   <button
@@ -266,7 +275,7 @@ export default function ExamReviewPage() {
                     onClick={() => {
                       const next = { ...flagged, [q.question_id]: false };
                       setFlagged(next);
-                      persistAll(answers, multiSelections, next);
+                      persistAll(answers, multiSelections, next, hintUsed);
                     }}
                   >
                     Remove flag

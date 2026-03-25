@@ -65,6 +65,7 @@ export type ExamSubmissionSheetRow = {
   answers_json: string;
   evaluation_json: string;
   flagged_question_ids: string;
+  hint_question_ids: string;
 };
 
 export async function appendExamSubmission(
@@ -95,6 +96,7 @@ export async function findSubmissionById(
     answers_json: r.answers_json || "{}",
     evaluation_json: r.evaluation_json || "{}",
     flagged_question_ids: r.flagged_question_ids || "[]",
+    hint_question_ids: r.hint_question_ids || "[]",
   };
 }
 
@@ -193,6 +195,7 @@ export async function loadQuestionsForExam(
       order_index: r.order_index || "0",
       type: r.type as ExamQuestionRow["type"],
       question_text: r.question_text || "",
+      hint_text: r.hint_text || "",
       options_json: r.options_json || "[]",
       correct_answer: r.correct_answer || "",
       explanation: r.explanation || "",
@@ -217,6 +220,7 @@ export function toPublicQuestions(rows: ExamQuestionRow[]): PublicExamQuestion[]
       order_index: Number(r.order_index) || 0,
       type: r.type,
       question_text: r.question_text,
+      hint_text: r.hint_text || "",
       options,
     };
   });

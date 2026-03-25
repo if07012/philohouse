@@ -26,6 +26,7 @@ export const QUESTION_HEADERS = [
   "order_index",
   "type",
   "question_text",
+  "hint_text",
   "options_json",
   "correct_answer",
   "explanation",
@@ -41,6 +42,7 @@ export const SUBMISSION_HEADERS = [
   "answers_json",
   "evaluation_json",
   "flagged_question_ids",
+  "hint_question_ids",
 ] as const;
 
 export type MaterialRow = {
@@ -64,6 +66,7 @@ export type ExamQuestionRow = {
   order_index: string;
   type: ExamQuestionType;
   question_text: string;
+  hint_text: string;
   options_json: string;
   correct_answer: string;
   explanation: string;
@@ -76,6 +79,7 @@ export type PublicExamQuestion = {
   order_index: number;
   type: ExamQuestionType;
   question_text: string;
+  hint_text: string;
   options: string[];
 };
 

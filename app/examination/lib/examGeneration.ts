@@ -6,6 +6,7 @@ import { groqChatJson } from "./groq";
 type GeneratedMcqSingle = {
   type: "mcq_single";
   question: string;
+  hint: string;
   options: [string, string, string, string];
   correctLetter: "A" | "B" | "C" | "D";
   explanation: string;
@@ -14,6 +15,7 @@ type GeneratedMcqSingle = {
 type GeneratedMcqMulti = {
   type: "mcq_multi";
   question: string;
+  hint: string;
   options: [string, string, string, string];
   correctLetters: ("A" | "B" | "C" | "D")[];
   explanation: string;
@@ -22,6 +24,7 @@ type GeneratedMcqMulti = {
 type GeneratedFill = {
   type: "fill_blank";
   question: string;
+  hint: string;
   acceptableAnswers: string[];
   explanation: string;
 };
@@ -29,6 +32,7 @@ type GeneratedFill = {
 type GeneratedEssay = {
   type: "essay";
   question: string;
+  hint: string;
   modelAnswer: string;
   gradingReference: string;
   explanation: string;
@@ -80,6 +84,7 @@ Rules:
 - Multiple choice: exactly four options; one clearly best answer (single) or multiple correct (multi) as specified.
 - Fill-in-the-blank: use a single blank marked as _____ in the question text. acceptableAnswers should include correct spellings and obvious variants (case-insensitive matching will be used later).
 - Essay: prompts should be achievable in a short paragraph. modelAnswer is a concise exemplar; gradingReference lists 3–5 bullet criteria for grading.
+- Every question must include "hint": one short clue (max 1 sentence) that points to the relevant part of the material without revealing the final answer directly.
 - Variety: Each run must feel like a NEW exam. Mix recall, simple application, and light inference (still only from the material). Rotate which concepts you emphasize. If "Previously used question stems" appear, do NOT copy or lightly paraphrase them; ask about different details, use different angles, and fresh distractors while staying faithful to the material.`;
 
 function buildGenerationUserPrompt(
@@ -107,23 +112,32 @@ ${material.content}
 ${priorBlock}
 Variation seed (for your internal diversity; output only the JSON schema below): ${variationId}
 
+Make the hint:
+- Do NOT be too general (avoid hints like "read the material again")
+- ONLY use information from the material
+- Add More explanation to make student easy to understand
+- COPY information from the material but add some explanation to make sure student understand the answer
+- Minimum 100 words
+- COPY the answer in the hint
+
 Return a JSON object with exactly these keys and array lengths:
 - "mcq_single": array of length ${COUNTS.mcq_single}
 - "mcq_multi": array of length ${COUNTS.mcq_multi}
 - "fill_blank": array of length ${COUNTS.fill_blank}
 - "essay": array of length ${COUNTS.essay}
 
+
 Each mcq_single item:
-{ "type": "mcq_single", "question": string, "options": [string,string,string,string], "correctLetter": "A"|"B"|"C"|"D", "explanation": string }
+{ "type": "mcq_single", "question": string, "hint": string, "options": [string,string,string,string], "correctLetter": "A"|"B"|"C"|"D", "explanation": string }
 
 Each mcq_multi item (more than one correct):
-{ "type": "mcq_multi", "question": string, "options": [string,string,string,string], "correctLetters": ["A","C"], "explanation": string }
+{ "type": "mcq_multi", "question": string, "hint": string, "options": [string,string,string,string], "correctLetters": ["A","C"], "explanation": string }
 
 Each fill_blank item:
-{ "type": "fill_blank", "question": string (include _____), "acceptableAnswers": string[], "explanation": string }
+{ "type": "fill_blank", "question": string (include _____), "hint": string, "acceptableAnswers": string[], "explanation": string }
 
 Each essay item:
-{ "type": "essay", "question": string, "modelAnswer": string, "gradingReference": string, "explanation": string }`;
+{ "type": "essay", "question": string, "hint": string, "modelAnswer": string, "gradingReference": string, "explanation": string }`;
 }
 
 function validatePayload(p: GenerationPayload): void {
@@ -170,6 +184,7 @@ function rowsFromPayload(
       order_index: String(order++),
       type: "mcq_single",
       question_text: q.question,
+      hint_text: q.hint,
       options_json: JSON.stringify(q.options),
       correct_answer: q.correctLetter.toUpperCase(),
       explanation: q.explanation,
@@ -184,6 +199,7 @@ function rowsFromPayload(
       order_index: String(order++),
       type: "mcq_multi",
       question_text: q.question,
+      hint_text: q.hint,
       options_json: JSON.stringify(q.options),
       correct_answer: lettersToSortedKey(q.correctLetters),
       explanation: q.explanation,
@@ -198,6 +214,7 @@ function rowsFromPayload(
       order_index: String(order++),
       type: "fill_blank",
       question_text: q.question,
+      hint_text: q.hint,
       options_json: "[]",
       correct_answer: JSON.stringify(q.acceptableAnswers),
       explanation: q.explanation,
@@ -212,6 +229,7 @@ function rowsFromPayload(
       order_index: String(order++),
       type: "essay",
       question_text: q.question,
+      hint_text: q.hint,
       options_json: "[]",
       correct_answer: q.modelAnswer,
       explanation: q.explanation,

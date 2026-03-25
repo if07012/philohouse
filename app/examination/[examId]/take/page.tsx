@@ -31,6 +31,7 @@ function ExamTakeContent() {
     Record<string, Set<string>>
   >({});
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
+  const [hintUsed, setHintUsed] = useState<Record<string, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answerConfirmed, setAnswerConfirmed] = useState(true);
   const [guardActive, setGuardActive] = useState(false);
@@ -40,11 +41,13 @@ function ExamTakeContent() {
       answers: Record<string, string>;
       multiSelections: Record<string, Set<string>>;
       flagged: Record<string, boolean>;
+      hintUsed: Record<string, boolean>;
       currentIndex: number;
     }>) => {
       const nextAnswers = patch.answers ?? answers;
       const nextMulti = patch.multiSelections ?? multiSelections;
       const nextFlagged = patch.flagged ?? flagged;
+      const nextHintUsed = patch.hintUsed ?? hintUsed;
       const nextIdx = patch.currentIndex ?? currentIndex;
       const prev = loadExamState(examId);
       saveExamState(
@@ -53,6 +56,7 @@ function ExamTakeContent() {
           answers: nextAnswers,
           multiSelections: nextMulti,
           flagged: nextFlagged,
+          hintUsed: nextHintUsed,
           currentIndex: nextIdx,
           submitted: prev?.submitted ?? false,
           submissionId: prev?.submissionId,
@@ -60,7 +64,7 @@ function ExamTakeContent() {
         })
       );
     },
-    [answers, multiSelections, flagged, currentIndex, examId]
+    [answers, multiSelections, flagged, hintUsed, currentIndex, examId]
   );
 
   useEffect(() => {
@@ -89,6 +93,7 @@ function ExamTakeContent() {
           setAnswers(stored.answers);
           setMultiSelections(multiSelectionsFromState(stored.multiAnswers));
           setFlagged(stored.flagged);
+          setHintUsed(stored.hintUsed ?? {});
           const qParam = searchParams.get("q");
           if (qParam) {
             const n = Math.max(1, parseInt(qParam, 10) || 1);
@@ -157,6 +162,13 @@ function ExamTakeContent() {
   const updateFlagged = (next: Record<string, boolean>) => {
     setFlagged(next);
     persist({ flagged: next });
+  };
+
+  const markHintUsed = (questionId: string) => {
+    if (hintUsed[questionId]) return;
+    const next = { ...hintUsed, [questionId]: true };
+    setHintUsed(next);
+    persist({ hintUsed: next });
   };
 
   const toggleFlag = () => {
@@ -283,6 +295,22 @@ function ExamTakeContent() {
               updateAnswers(next);
             }}
           />
+
+          <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
+            <button
+              type="button"
+              onClick={() => markHintUsed(q.question_id)}
+              className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-sm font-medium text-blue-900"
+            >
+              {hintUsed[q.question_id] ? "Hint opened" : "Show hint"}
+            </button>
+            {hintUsed[q.question_id] && (
+              <p className="mt-3 whitespace-pre-wrap text-sm text-blue-950">
+                {q.hint_text ||
+                  "Baca lagi bagian penting dari materi yang berhubungan dengan pertanyaan ini."}
+              </p>
+            )}
+          </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-black/10 pt-6">
             <button
