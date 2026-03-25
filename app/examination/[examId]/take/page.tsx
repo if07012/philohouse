@@ -173,6 +173,15 @@ function ExamTakeContent() {
   const goNext = () => {
     if (!canGoNext || !q) return;
     if (isLast) {
+      const firstMissingIdx = questions.findIndex(
+        (qq) => !hasAnswerForQuestion(qq, answers, multiSelections)
+      );
+      if (firstMissingIdx !== -1) {
+        router.push(
+          `/examination/${examId}/take?q=${Math.max(1, firstMissingIdx + 1)}`
+        );
+        return;
+      }
       router.push(`/examination/${examId}/review`);
       return;
     }
@@ -316,12 +325,6 @@ function ExamTakeContent() {
             >
               {isLast ? "Finish & review" : "Next"}
             </button>
-            <Link
-              href={`/examination/${examId}/review`}
-              className="inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-medium text-[var(--color-accent)] underline"
-            >
-              Skip to review
-            </Link>
           </div>
         </section>
       </div>

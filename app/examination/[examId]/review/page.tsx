@@ -9,6 +9,7 @@ import type { EvaluationItem, PublicExamQuestion } from "../../lib/types";
 import {
   buildPersistedState,
   loadExamState,
+  hasAnswerForQuestion,
   mergeMultiIntoAnswers,
   multiSelectionsFromState,
   saveExamState,
@@ -106,8 +107,19 @@ export default function ExamReviewPage() {
   const flaggedIds = flaggedQuestions.map((q) => q.question_id);
 
   const submitFinal = async () => {
-    setSubmitting(true);
     setError(null);
+
+    const firstMissingIdx = questions.findIndex(
+      (qq) => !hasAnswerForQuestion(qq, answers, multiSelections)
+    );
+    if (firstMissingIdx !== -1) {
+      router.push(
+        `/examination/${examId}/take?q=${Math.max(1, firstMissingIdx + 1)}`
+      );
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const multiSerialized: Record<string, string> = {};
       for (const q of questions) {
