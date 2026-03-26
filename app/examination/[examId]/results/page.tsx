@@ -21,6 +21,7 @@ function ExamResultsContent() {
   const [gradingReference, setGradingReference] = useState<Record<string, string>>({});
   const [evaluation, setEvaluation] = useState<EvaluationItem[]>([]);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
+  const [hintQuestionIds, setHintQuestionIds] = useState<string[]>([]);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const [source, setSource] = useState<"sheet" | "local" | null>(null);
@@ -52,6 +53,11 @@ function ExamResultsContent() {
           setEvaluation(subJson.evaluation || []);
           setExplanations(subJson.explanations || {});
           setAnswers(subJson.answers || {});
+          setHintQuestionIds(
+            Array.isArray(subJson.hintQuestionIds)
+              ? subJson.hintQuestionIds.map((v: unknown) => String(v)).filter(Boolean)
+              : []
+          );
           setSubmissionId(subJson.submission_id ?? sid);
           setSubmittedAt(subJson.submitted_at ?? null);
           setTitle(subJson.materialTitle || "Exam");
@@ -87,6 +93,11 @@ function ExamResultsContent() {
       setEvaluation(stored.results.evaluation);
       setExplanations(stored.results.explanations);
       setAnswers(stored.answers || {});
+      setHintQuestionIds(
+        Object.entries(stored.hintUsed ?? {})
+          .filter(([, used]) => used === true)
+          .map(([qid]) => qid)
+      );
       setSubmissionId(stored.submissionId ?? null);
       setSource("local");
 
@@ -113,6 +124,10 @@ function ExamResultsContent() {
     for (const e of evaluation) m.set(e.question_id, e);
     return m;
   }, [evaluation]);
+
+  const hintUsedSet = useMemo(() => {
+    return new Set(hintQuestionIds);
+  }, [hintQuestionIds]);
 
   const essayAvg = useMemo(() => {
     const essays = evaluation.filter(
@@ -289,11 +304,19 @@ function ExamResultsContent() {
           {questions.map((q) => {
             const ev = byId.get(q.question_id);
             const ex = explanations[q.question_id];
+            const hintUsed = hintUsedSet.has(q.question_id);
             return (
               <li key={q.question_id} className="card-soft p-5">
-                <p className="text-xs font-medium uppercase text-black/45">
-                  Q{q.order_index} · {questionTypeLabel(q.type)}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-medium uppercase text-black/45">
+                    Q{q.order_index} · {questionTypeLabel(q.type)}
+                  </p>
+                  {hintUsed && (
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-900">
+                      Hint used
+                    </span>
+                  )}
+                </div>
                 <p className="mt-2 font-medium">{q.question_text}</p>
                 <div className="mt-3 rounded-lg bg-black/[0.04] px-4 py-3 text-sm">
                   <p className="font-semibold text-black/75">Your answer</p>

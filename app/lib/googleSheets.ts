@@ -102,7 +102,14 @@ export async function ensureSheetWithHeaders(
   if (!sheet) {
     sheet = await doc.addSheet({ title: sheetName, headerValues: headers });
   } else {
-    
+    // Ensure existing sheets get any newly-added headers (schema migrations).
+    // node-google-spreadsheet only writes known header columns.
+    await sheet.loadHeaderRow();
+    const existing = Array.isArray(sheet.headerValues) ? sheet.headerValues : [];
+    const missing = headers.filter((h) => !existing.includes(h));
+    if (missing.length) {
+      await sheet.setHeaderRow([...existing, ...missing]);
+    }
   }
   return sheet;
 }

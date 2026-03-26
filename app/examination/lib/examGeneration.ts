@@ -118,7 +118,7 @@ Make the hint:
 - Add More explanation to make student easy to understand
 - COPY information from the material but add some explanation to make sure student understand the answer
 - Minimum 100 words
-- COPY the answer in the hint
+- Don't COPY the answer in the hint, but explain in another way
 
 Return a JSON object with exactly these keys and array lengths:
 - "mcq_single": array of length ${COUNTS.mcq_single}
