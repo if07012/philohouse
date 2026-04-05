@@ -39,7 +39,7 @@ export function parseExamLlmProvider(value: unknown): ExamLlmProvider | null {
 
 /** Base URL only, e.g. http://127.0.0.1:11434 — /v1/chat/completions is appended. */
 export function getOllamaBaseUrl(): string {
-  return (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(
+return (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(
     /\/$/,
     ""
   );

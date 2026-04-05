@@ -195,7 +195,7 @@ export async function notifyExamCheckAnswerTelegram(params: {
     ``,
     `<b>Student answer</b>`,
     params.questionType === "mcq_single" || params.questionType === "mcq_multi"
-      ? `Pilihan: <code>${ansLetters || "—"}</code>${ansDetail || `<i>(empty)</i>`}`
+      ? `Pilihan: <code>${ansLetters || "—"}</code> \n${ansDetail || `<i>(empty)</i>`}`
       : ansDetail || `<i>(empty)</i>`,
     ``,
     resultLine,

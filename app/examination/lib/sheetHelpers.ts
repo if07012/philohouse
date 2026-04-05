@@ -173,6 +173,20 @@ export async function listExams(spreadsheetId: string): Promise<ExamMetaRow[]> {
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
+/** One row in ExamSubmissions = one final submit (persist) for that exam_id. */
+export async function countSubmissionsPerExam(
+  spreadsheetId: string
+): Promise<Map<string, number>> {
+  const rows = await readSheetData(spreadsheetId, EXAM_SHEETS.submissions);
+  const counts = new Map<string, number>();
+  for (const r of rows as Record<string, string>[]) {
+    const eid = (r.exam_id || "").trim();
+    if (!eid) continue;
+    counts.set(eid, (counts.get(eid) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /** Cap how many prior question stems we send to the model (token budget vs dedup coverage). */
 const MAX_PRIOR_QUESTION_TEXTS_FOR_GENERATION = 80;
 
