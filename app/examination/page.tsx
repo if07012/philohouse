@@ -16,6 +16,8 @@ type ExamMeta = {
   material_id: string;
   material_title: string;
   created_at: string;
+  /** Rows in ExamSubmissions for this exam (each final submit). */
+  submission_count: number;
 };
 
 export default function ExaminationHubPage() {
@@ -49,7 +51,13 @@ export default function ExaminationHubPage() {
       const res = await fetch("/api/examination/exams");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load exams");
-      setExams(data.exams || []);
+      const raw = (data.exams || []) as ExamMeta[];
+      setExams(
+        raw.map((ex) => ({
+          ...ex,
+          submission_count: Number(ex.submission_count) || 0,
+        }))
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load exams");
     } finally {
@@ -198,14 +206,24 @@ export default function ExaminationHubPage() {
                 <li key={ex.exam_id}>
                   <Link
                     href={`/examination/${ex.exam_id}/preview`}
-                    className="block w-full rounded-lg border border-black/10 px-4 py-3 text-left text-sm transition hover:bg-black/[0.03]"
+                    className="flex w-full flex-wrap items-start justify-between gap-2 rounded-lg border border-black/10 px-4 py-3 text-left text-sm transition hover:bg-black/[0.03]"
                   >
-                    <span className="font-medium">{ex.material_title}</span>
-                    <span className="mt-1 block text-xs text-black/55">
-                      {ex.created_at
-                        ? new Date(ex.created_at).toLocaleString()
-                        : ""}{" "}
-                      · Open to read material and start
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium">{ex.material_title}</span>
+                      <span className="mt-1 block text-xs text-black/55">
+                        {ex.created_at
+                          ? new Date(ex.created_at).toLocaleString()
+                          : ""}
+                        {" · "}
+                        Open to read material and start
+                      </span>
+                    </div>
+                    <span
+                      className="shrink-0 rounded-full bg-[var(--color-accent)]/15 px-2.5 py-1 text-xs font-semibold text-[var(--color-accent)]"
+                      title="Final submits saved to ExamSubmissions"
+                    >
+                      {ex.submission_count}{" "}
+                      {ex.submission_count === 1 ? "submission" : "submissions"}
                     </span>
                   </Link>
                 </li>
