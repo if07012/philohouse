@@ -170,7 +170,7 @@ export async function notifyExamCheckAnswerTelegram(params: {
   );
   const ansDetail = escapeTelegramHtml(
     truncTelegramField(answerExpanded, 1200)
-  ).replace(/\n/g, "<br>");
+  ).replace(/\n/g, "");
   const typeLabel = escapeTelegramHtml(String(params.questionType));
   const order = escapeTelegramHtml(String(params.orderIndex || "?"));
   const resultLine = params.correct
@@ -195,7 +195,7 @@ export async function notifyExamCheckAnswerTelegram(params: {
     ``,
     `<b>Student answer</b>`,
     params.questionType === "mcq_single" || params.questionType === "mcq_multi"
-      ? `Pilihan: <code>${ansLetters || "—"}</code><br>${ansDetail || `<i>(empty)</i>`}`
+      ? `Pilihan: <code>${ansLetters || "—"}</code>${ansDetail || `<i>(empty)</i>`}`
       : ansDetail || `<i>(empty)</i>`,
     ``,
     resultLine,
