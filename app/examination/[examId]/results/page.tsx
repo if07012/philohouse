@@ -27,6 +27,9 @@ function ExamResultsContent() {
   const [source, setSource] = useState<"sheet" | "local" | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [answerHistoryByQuestion, setAnswerHistoryByQuestion] = useState<
+    Record<string, { at: string; answer: string; correct: boolean }[]>
+  >({});
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +61,17 @@ function ExamResultsContent() {
               ? subJson.hintQuestionIds.map((v: unknown) => String(v)).filter(Boolean)
               : []
           );
+          const ah = subJson.answerHistory;
+          if (ah && typeof ah === "object" && !Array.isArray(ah)) {
+            setAnswerHistoryByQuestion(
+              ah as Record<
+                string,
+                { at: string; answer: string; correct: boolean }[]
+              >
+            );
+          } else {
+            setAnswerHistoryByQuestion({});
+          }
           setSubmissionId(subJson.submission_id ?? sid);
           setSubmittedAt(subJson.submitted_at ?? null);
           setTitle(subJson.materialTitle || "Exam");
@@ -98,6 +112,7 @@ function ExamResultsContent() {
           .filter(([, used]) => used === true)
           .map(([qid]) => qid)
       );
+      setAnswerHistoryByQuestion(stored.answerHistory ?? {});
       setSubmissionId(stored.submissionId ?? null);
       setSource("local");
 
@@ -324,6 +339,35 @@ function ExamResultsContent() {
                     {formatUserAnswer(q)}
                   </p>
                 </div>
+                {(answerHistoryByQuestion[q.question_id] ?? []).length > 0 && (
+                  <div className="mt-3 rounded-lg border border-black/10 bg-white/60 px-4 py-3 text-sm">
+                    <p className="font-semibold text-black/70">
+                      Riwayat jawaban (saat mengerjakan)
+                    </p>
+                    <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-black/75">
+                      {(answerHistoryByQuestion[q.question_id] ?? []).map(
+                        (att, i) => (
+                          <li key={`${att.at}-${i}`}>
+                            <span className="text-black/50">
+                              {new Date(att.at).toLocaleString()}
+                              {": "}
+                            </span>
+                            <span
+                              className={
+                                att.correct ? "text-emerald-800" : "text-red-800"
+                              }
+                            >
+                              {att.correct ? "✓" : "✗"}
+                            </span>{" "}
+                            <span className="whitespace-pre-wrap">
+                              {att.answer || "(kosong)"}
+                            </span>
+                          </li>
+                        )
+                      )}
+                    </ol>
+                  </div>
+                )}
                 <div className="mt-3 rounded-lg bg-black/[0.04] px-4 py-3 text-sm">
                   <p className="font-semibold text-black/75">
                     {q.type === "essay" ? "Model answer" : "Correct answer"}

@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 
 export const maxDuration = 120;
 import { generateExamQuestionRows } from "@/app/examination/lib/examGeneration";
-import { getGrade4ExamSpreadsheetId } from "@/app/examination/lib/env";
+import {
+  getExamLlmProvider,
+  getGrade4ExamSpreadsheetId,
+  parseExamLlmProvider,
+} from "@/app/examination/lib/env";
 import {
   appendExamMeta,
   appendQuestionRows,
@@ -18,6 +22,15 @@ export async function POST(request: Request) {
     if (!materialId?.trim()) {
       return NextResponse.json(
         { error: "materialId is required" },
+        { status: 400 }
+      );
+    }
+
+    const fromBody = parseExamLlmProvider(body?.llmProvider);
+    const llmProvider = fromBody ?? getExamLlmProvider();
+    if (body?.llmProvider != null && fromBody == null) {
+      return NextResponse.json(
+        { error: 'llmProvider must be "groq" or "ollama"' },
         { status: 400 }
       );
     }
@@ -39,7 +52,8 @@ export async function POST(request: Request) {
     );
     const { examId, rows } = await generateExamQuestionRows(
       material,
-      priorQuestionTexts
+      priorQuestionTexts,
+      { llmProvider }
     );
 
     const created_at = new Date().toISOString();

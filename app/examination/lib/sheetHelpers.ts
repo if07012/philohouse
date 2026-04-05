@@ -16,6 +16,39 @@ import {
 } from "./types";
 import { parseMaterialRow } from "./examGeneration";
 
+const DEFAULT_EXAM_QUESTIONS_CACHE_TTL_MS = 90_000;
+
+function examQuestionsCacheTtlMs(): number {
+  const raw = process.env.EXAM_QUESTIONS_CACHE_TTL_MS;
+  if (raw === undefined || raw === "") return DEFAULT_EXAM_QUESTIONS_CACHE_TTL_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_EXAM_QUESTIONS_CACHE_TTL_MS;
+}
+
+type ExamQuestionsCacheEntry = {
+  rows: ExamQuestionRow[];
+  expiresAt: number;
+};
+
+const examQuestionsCache = new Map<string, ExamQuestionsCacheEntry>();
+const examQuestionsLoadInFlight = new Map<string, Promise<ExamQuestionRow[]>>();
+
+function examQuestionsCacheKey(spreadsheetId: string, examId: string): string {
+  return `${spreadsheetId}\n${examId}`;
+}
+
+function cloneExamQuestionRows(rows: ExamQuestionRow[]): ExamQuestionRow[] {
+  return rows.map((r) => ({ ...r }));
+}
+
+/** Call after writes to ExamQuestions so the next load hits Google Sheets. */
+export function invalidateExamQuestionsCache(
+  spreadsheetId: string,
+  examId: string
+): void {
+  examQuestionsCache.delete(examQuestionsCacheKey(spreadsheetId, examId.trim()));
+}
+
 export async function listMaterials(spreadsheetId: string): Promise<MaterialRow[]> {
   const rows = await readSheetData(spreadsheetId, EXAM_SHEETS.materials);
   const out: MaterialRow[] = [];
@@ -66,6 +99,7 @@ export type ExamSubmissionSheetRow = {
   evaluation_json: string;
   flagged_question_ids: string;
   hint_question_ids: string;
+  answer_history_json: string;
 };
 
 export async function appendExamSubmission(
@@ -97,6 +131,7 @@ export async function findSubmissionById(
     evaluation_json: r.evaluation_json || "{}",
     flagged_question_ids: r.flagged_question_ids || "[]",
     hint_question_ids: r.hint_question_ids || "[]",
+    answer_history_json: r.answer_history_json || "{}",
   };
 }
 
@@ -121,6 +156,8 @@ export async function appendQuestionRows(
     rows as unknown as Record<string, unknown>[],
     EXAM_SHEETS.questions
   );
+  const examId = rows[0]?.exam_id?.trim();
+  if (examId) invalidateExamQuestionsCache(spreadsheetId, examId);
 }
 
 export async function listExams(spreadsheetId: string): Promise<ExamMetaRow[]> {
@@ -136,8 +173,8 @@ export async function listExams(spreadsheetId: string): Promise<ExamMetaRow[]> {
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
-/** Cap how many prior question stems we send to the model (token budget). */
-const MAX_PRIOR_QUESTION_TEXTS_FOR_GENERATION = 48;
+/** Cap how many prior question stems we send to the model (token budget vs dedup coverage). */
+const MAX_PRIOR_QUESTION_TEXTS_FOR_GENERATION = 80;
 
 /**
  * Question stems from previous exams for this material (newest exams first),
@@ -179,14 +216,11 @@ export async function listPriorQuestionTextsForMaterial(
   return out;
 }
 
-export async function loadQuestionsForExam(
-  spreadsheetId: string,
+function mapRowsForExam(
+  rawRows: Record<string, string>[],
   examId: string
-): Promise<ExamQuestionRow[]> {
-  const rows = await readSheetData(spreadsheetId, EXAM_SHEETS.questions);
-  const filtered = (rows as Record<string, string>[]).filter(
-    (r) => r.exam_id === examId
-  );
+): ExamQuestionRow[] {
+  const filtered = rawRows.filter((r) => r.exam_id === examId);
   return filtered
     .map((r) => ({
       exam_id: r.exam_id,
@@ -204,6 +238,46 @@ export async function loadQuestionsForExam(
     .sort(
       (a, b) => Number(a.order_index) - Number(b.order_index)
     ) as ExamQuestionRow[];
+}
+
+/**
+ * Cached read of ExamQuestions for one exam (reduces Google Sheets quota).
+ * Invalidated when {@link appendQuestionRows} runs for that exam.
+ */
+export async function loadQuestionsForExam(
+  spreadsheetId: string,
+  examId: string
+): Promise<ExamQuestionRow[]> {
+  const id = examId.trim();
+  const key = examQuestionsCacheKey(spreadsheetId, id);
+  const now = Date.now();
+  const ttl = examQuestionsCacheTtlMs();
+
+  const cached = examQuestionsCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cloneExamQuestionRows(cached.rows);
+  }
+
+  let load = examQuestionsLoadInFlight.get(key);
+  if (!load) {
+    load = (async () => {
+      try {
+        const rows = await readSheetData(spreadsheetId, EXAM_SHEETS.questions);
+        const mapped = mapRowsForExam(rows as Record<string, string>[], id);
+        examQuestionsCache.set(key, {
+          rows: mapped,
+          expiresAt: Date.now() + ttl,
+        });
+        return mapped;
+      } finally {
+        examQuestionsLoadInFlight.delete(key);
+      }
+    })();
+    examQuestionsLoadInFlight.set(key, load);
+  }
+
+  const result = await load;
+  return cloneExamQuestionRows(result);
 }
 
 export function toPublicQuestions(rows: ExamQuestionRow[]): PublicExamQuestion[] {

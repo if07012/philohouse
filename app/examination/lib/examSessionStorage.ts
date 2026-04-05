@@ -1,4 +1,8 @@
-import type { EvaluationItem, PublicExamQuestion } from "./types";
+import type {
+  EvaluationItem,
+  ExamAnswerAttemptEntry,
+  PublicExamQuestion,
+} from "./types";
 
 const STORAGE_VERSION = 1 as const;
 
@@ -10,6 +14,7 @@ export type ExamPersistedState = {
   multiAnswers: Record<string, string>;
   flagged: Record<string, boolean>;
   hintUsed?: Record<string, boolean>;
+  answerHistory?: Record<string, ExamAnswerAttemptEntry[]>;
   currentIndex: number;
   submitted: boolean;
   submissionId?: string;
@@ -52,6 +57,7 @@ export function buildPersistedState(params: {
   multiSelections: Record<string, Set<string>>;
   flagged: Record<string, boolean>;
   hintUsed?: Record<string, boolean>;
+  answerHistory?: Record<string, ExamAnswerAttemptEntry[]>;
   currentIndex: number;
   submitted: boolean;
   submissionId?: string;
@@ -68,6 +74,7 @@ export function buildPersistedState(params: {
     multiAnswers,
     flagged: params.flagged,
     hintUsed: params.hintUsed ?? {},
+    answerHistory: params.answerHistory ?? {},
     currentIndex: params.currentIndex,
     submitted: params.submitted,
     submissionId: params.submissionId,
@@ -83,6 +90,7 @@ export function createFreshState(examId: string): ExamPersistedState {
     multiAnswers: {},
     flagged: {},
     hintUsed: {},
+    answerHistory: {},
     currentIndex: 0,
     submitted: false,
   };

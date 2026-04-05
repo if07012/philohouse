@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { QuestionBody } from "../../components/QuestionBody";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 import type { PublicExamQuestion } from "../../lib/types";
+import type { ExamAnswerAttemptEntry } from "../../lib/types";
 import {
   buildPersistedState,
   createFreshState,
@@ -14,6 +15,18 @@ import {
   multiSelectionsFromState,
   saveExamState,
 } from "../../lib/examSessionStorage";
+
+function answerPayloadForQuestion(
+  q: PublicExamQuestion,
+  answers: Record<string, string>,
+  multiSelections: Record<string, Set<string>>
+): string {
+  if (q.type === "mcq_multi") {
+    const set = multiSelections[q.question_id] || new Set<string>();
+    return [...set].sort().join(",");
+  }
+  return (answers[q.question_id] ?? "").trim();
+}
 
 function ExamTakeContent() {
   const params = useParams();
@@ -32,9 +45,15 @@ function ExamTakeContent() {
   >({});
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
   const [hintUsed, setHintUsed] = useState<Record<string, boolean>>({});
+  const [answerHistory, setAnswerHistory] = useState<
+    Record<string, ExamAnswerAttemptEntry[]>
+  >({});
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answerConfirmed, setAnswerConfirmed] = useState(true);
   const [guardActive, setGuardActive] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string | null>(
+    null
+  );
+  const [checking, setChecking] = useState(false);
 
   const persist = useCallback(
     (patch: Partial<{
@@ -42,12 +61,14 @@ function ExamTakeContent() {
       multiSelections: Record<string, Set<string>>;
       flagged: Record<string, boolean>;
       hintUsed: Record<string, boolean>;
+      answerHistory: Record<string, ExamAnswerAttemptEntry[]>;
       currentIndex: number;
     }>) => {
       const nextAnswers = patch.answers ?? answers;
       const nextMulti = patch.multiSelections ?? multiSelections;
       const nextFlagged = patch.flagged ?? flagged;
       const nextHintUsed = patch.hintUsed ?? hintUsed;
+      const nextHistory = patch.answerHistory ?? answerHistory;
       const nextIdx = patch.currentIndex ?? currentIndex;
       const prev = loadExamState(examId);
       saveExamState(
@@ -57,6 +78,7 @@ function ExamTakeContent() {
           multiSelections: nextMulti,
           flagged: nextFlagged,
           hintUsed: nextHintUsed,
+          answerHistory: nextHistory,
           currentIndex: nextIdx,
           submitted: prev?.submitted ?? false,
           submissionId: prev?.submissionId,
@@ -64,7 +86,15 @@ function ExamTakeContent() {
         })
       );
     },
-    [answers, multiSelections, flagged, hintUsed, currentIndex, examId]
+    [
+      answers,
+      multiSelections,
+      flagged,
+      hintUsed,
+      answerHistory,
+      currentIndex,
+      examId,
+    ]
   );
 
   useEffect(() => {
@@ -94,6 +124,7 @@ function ExamTakeContent() {
           setMultiSelections(multiSelectionsFromState(stored.multiAnswers));
           setFlagged(stored.flagged);
           setHintUsed(stored.hintUsed ?? {});
+          setAnswerHistory(stored.answerHistory ?? {});
           const qParam = searchParams.get("q");
           if (qParam) {
             const n = Math.max(1, parseInt(qParam, 10) || 1);
@@ -135,7 +166,7 @@ function ExamTakeContent() {
   const isLast = currentIndex >= total - 1;
 
   useEffect(() => {
-    setAnswerConfirmed(true);
+    setValidationMessage(null);
   }, [currentIndex]);
 
   useEffect(() => {
@@ -164,13 +195,6 @@ function ExamTakeContent() {
     persist({ flagged: next });
   };
 
-  const markHintUsed = (questionId: string) => {
-    if (hintUsed[questionId]) return;
-    const next = { ...hintUsed, [questionId]: true };
-    setHintUsed(next);
-    persist({ hintUsed: next });
-  };
-
   const toggleFlag = () => {
     if (!q) return;
     const next = { ...flagged, [q.question_id]: !flagged[q.question_id] };
@@ -178,28 +202,151 @@ function ExamTakeContent() {
   };
 
   const canGoNext =
-    q &&
-    hasAnswerForQuestion(q, answers, multiSelections) &&
-    answerConfirmed;
+    q && hasAnswerForQuestion(q, answers, multiSelections) && !checking;
 
-  const goNext = () => {
+  const goNext = async () => {
     if (!canGoNext || !q) return;
-    if (isLast) {
-      const firstMissingIdx = questions.findIndex(
-        (qq) => !hasAnswerForQuestion(qq, answers, multiSelections)
-      );
-      if (firstMissingIdx !== -1) {
-        router.push(
-          `/examination/${examId}/take?q=${Math.max(1, firstMissingIdx + 1)}`
-        );
+    setChecking(true);
+    setValidationMessage(null);
+    const answerStr = answerPayloadForQuestion(q, answers, multiSelections);
+    try {
+      const res = await fetch("/api/examination/check-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          examId,
+          questionId: q.question_id,
+          answer: answerStr,
+        }),
+      });
+      const json = (await res.json()) as {
+        correct?: boolean;
+        questionType?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(json.error || "Could not check answer");
+      }
+      const correct = json.correct === true;
+      const attempt: ExamAnswerAttemptEntry = {
+        at: new Date().toISOString(),
+        answer: answerStr,
+        correct,
+      };
+      const prevList = answerHistory[q.question_id] ?? [];
+      const nextHistory = {
+        ...answerHistory,
+        [q.question_id]: [...prevList, attempt],
+      };
+      setAnswerHistory(nextHistory);
+
+      const priorWrongCount = prevList.filter((a) => !a.correct).length;
+      const skipAfterTwoPriorWrongs = !correct && priorWrongCount >= 1;
+
+      if (!correct && !skipAfterTwoPriorWrongs) {
+        let nextHintUsed = hintUsed;
+        if (q.type !== "essay") {
+          nextHintUsed = { ...hintUsed, [q.question_id]: true };
+          setHintUsed(nextHintUsed);
+        }
+        if (q.type === "essay") {
+          setValidationMessage(
+            "Tulis jawaban esai kamu terlebih dahulu sebelum lanjut."
+          );
+        } else {
+          setValidationMessage(
+            "Jawaban belum tepat. Baca petunjuk di bawah, perbaiki jawaban, lalu klik Next lagi."
+          );
+        }
+        let nextAnswers = answers;
+        let nextMulti = multiSelections;
+        if (q.type === "mcq_single") {
+          nextAnswers = { ...answers, [q.question_id]: "" };
+          setAnswers(nextAnswers);
+        } else if (q.type === "mcq_multi") {
+          nextMulti = { ...multiSelections, [q.question_id]: new Set() };
+          setMultiSelections(nextMulti);
+        } else if (q.type === "fill_blank") {
+          nextAnswers = { ...answers, [q.question_id]: "" };
+          setAnswers(nextAnswers);
+        }
+        persist({
+          answers: nextAnswers,
+          multiSelections: nextMulti,
+          hintUsed: nextHintUsed,
+          answerHistory: nextHistory,
+        });
         return;
       }
-      router.push(`/examination/${examId}/review`);
-      return;
+
+      let answersForNav = answers;
+      let multiForNav = multiSelections;
+
+      if (!correct && skipAfterTwoPriorWrongs) {
+        let nextHintUsed = hintUsed;
+        if (q.type !== "essay") {
+          nextHintUsed = { ...hintUsed, [q.question_id]: true };
+          setHintUsed(nextHintUsed);
+        }
+        if (q.type === "essay" && !answerStr.trim()) {
+          answersForNav = {
+            ...answers,
+            [q.question_id]: "(Tidak dijawab — batas percobaan)",
+          };
+          setAnswers(answersForNav);
+        }
+        setValidationMessage(
+          "Sudah 3x belum tepat. Kamu lanjut ke soal berikutnya; coba dipelajari lagi nanti."
+        );
+        persist({
+          answers: answersForNav,
+          multiSelections: multiForNav,
+          hintUsed: nextHintUsed,
+          answerHistory: nextHistory,
+        });
+      }
+
+      if (correct || skipAfterTwoPriorWrongs) {
+        if (isLast) {
+          const firstMissingIdx = questions.findIndex((qq) =>
+            !hasAnswerForQuestion(qq, answersForNav, multiForNav)
+          );
+          if (firstMissingIdx !== -1) {
+            persist({
+              answerHistory: nextHistory,
+              answers: answersForNav,
+              multiSelections: multiForNav,
+            });
+            router.push(
+              `/examination/${examId}/take?q=${Math.max(1, firstMissingIdx + 1)}`
+            );
+            return;
+          }
+          persist({
+            answerHistory: nextHistory,
+            answers: answersForNav,
+            multiSelections: multiForNav,
+          });
+          router.push(`/examination/${examId}/review`);
+          return;
+        }
+        const nextIdx = currentIndex + 1;
+        setCurrentIndex(nextIdx);
+        persist({
+          currentIndex: nextIdx,
+          answerHistory: nextHistory,
+          answers: answersForNav,
+          multiSelections: multiForNav,
+        });
+      }
+
+    } catch (e) {
+      setValidationMessage(
+        e instanceof Error ? e.message : "Could not check answer"
+      );
+    } finally {
+      setChecking(false);
     }
-    const nextIdx = currentIndex + 1;
-    setCurrentIndex(nextIdx);
-    persist({ currentIndex: nextIdx });
   };
 
   const goPrev = () => {
@@ -296,21 +443,26 @@ function ExamTakeContent() {
             }}
           />
 
-          <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
-            <button
-              type="button"
-              onClick={() => markHintUsed(q.question_id)}
-              className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-sm font-medium text-blue-900"
+          {validationMessage && (
+            <div
+              className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+              role="alert"
             >
-              {hintUsed[q.question_id] ? "Hint opened" : "Show hint"}
-            </button>
-            {hintUsed[q.question_id] && (
-              <p className="mt-3 whitespace-pre-wrap text-sm text-blue-950">
+              {validationMessage}
+            </div>
+          )}
+
+          {hintUsed[q.question_id] && q.type !== "essay" && (
+            <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-900">
+                Petunjuk (muncul setelah jawaban salah)
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-blue-950">
                 {q.hint_text ||
                   "Baca lagi bagian penting dari materi yang berhubungan dengan pertanyaan ini."}
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-black/10 pt-6">
             <button
@@ -324,16 +476,10 @@ function ExamTakeContent() {
             >
               {flagged[q.question_id] ? "Flagged for review" : "Flag for review"}
             </button>
-
-            <label className="flex max-w-xs cursor-pointer items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4"
-                checked={answerConfirmed}
-                onChange={(e) => setAnswerConfirmed(e.target.checked)}
-              />
-              <span>I checked my answer before going on.</span>
-            </label>
+            <p className="max-w-xs text-xs text-black/55">
+              Jawaban dicek tiap klik Next. Salah 2x masih harus diperbaiki; jika salah ke-3
+              kamu akan lanjut otomatis (esai kosong dicatat sebagai tidak dijawab).
+            </p>
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -347,11 +493,15 @@ function ExamTakeContent() {
             </button>
             <button
               type="button"
-              onClick={goNext}
+              onClick={() => void goNext()}
               disabled={!canGoNext}
               className="rounded-lg bg-[var(--color-dark-blue)] px-6 py-2.5 font-semibold text-white disabled:opacity-40"
             >
-              {isLast ? "Finish & review" : "Next"}
+              {checking
+                ? "Memeriksa…"
+                : isLast
+                  ? "Finish & review"
+                  : "Next"}
             </button>
           </div>
         </section>

@@ -43,7 +43,16 @@ export const SUBMISSION_HEADERS = [
   "evaluation_json",
   "flagged_question_ids",
   "hint_question_ids",
+  /** Per-question attempt log during take: Record<question_id, { at, answer, correct }[]> */
+  "answer_history_json",
 ] as const;
+
+/** One row in the per-question attempt history stored in answer_history_json */
+export type ExamAnswerAttemptEntry = {
+  at: string;
+  answer: string;
+  correct: boolean;
+};
 
 export type MaterialRow = {
   material_id: string;

@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import { EXAM_GENERATION_COUNTS as COUNTS } from "./constants";
+import { getExamLlmProvider, type ExamLlmProvider } from "./env";
+import { examLlmChatJson } from "./examLlm";
 import type { ExamQuestionRow, MaterialRow } from "./types";
-import { groqChatJson } from "./groq";
 
 type GeneratedMcqSingle = {
   type: "mcq_single";
@@ -84,8 +85,11 @@ Rules:
 - Multiple choice: exactly four options; one clearly best answer (single) or multiple correct (multi) as specified.
 - Fill-in-the-blank: use a single blank marked as _____ in the question text. acceptableAnswers should include correct spellings and obvious variants (case-insensitive matching will be used later).
 - Essay: prompts should be achievable in a short paragraph. modelAnswer is a concise exemplar; gradingReference lists 3–5 bullet criteria for grading.
-- Every question must include "hint": one short clue (max 1 sentence) that points to the relevant part of the material without revealing the final answer directly.
-- Variety: Each run must feel like a NEW exam. Mix recall, simple application, and light inference (still only from the material). Rotate which concepts you emphasize. If "Previously used question stems" appear, do NOT copy or lightly paraphrase them; ask about different details, use different angles, and fresh distractors while staying faithful to the material.`;
+- Every question must include "hint" as specified in the user message (substantive, from the material, without giving away the final answer).
+- Uniqueness vs this material_id: The user message lists every existing "question" stem already generated for this same material_id (from older exams). Before you finish, mentally check EACH new item's "question" string against that list (ignore only case differences and extra spaces when comparing).
+- NEVER output a "question" that is 100% identical to any listed stem after that normalization. If you need to assess the same idea again, you MUST change the stem: different wording, word order, scenario, or question type angle; MCQ options and distractors must be new, not copied from old exams.
+- Bans: no copy-paste from the list; no trivial edits only (synonym swap while keeping the same sentence frame counts as too similar). Aim for clearly different phrasing every generation run.
+- Variety: Each run must feel like a NEW exam. Mix recall, simple application, and light inference (still only from the material). Rotate which concepts you emphasize; when many prior stems exist, prefer topics and angles not already exhausted in the list.`;
 
 function buildGenerationUserPrompt(
   material: MaterialRow,
@@ -94,11 +98,23 @@ function buildGenerationUserPrompt(
 ): string {
   const priorBlock =
     priorQuestionTexts.length === 0
-      ? ""
+      ? `
+
+No prior exam questions are stored yet for this material_id ("${material.material_id}"). Still write wholly new stems (do not reuse canned templates across imaginary runs); later generations will be checked against this exam.
+`
       : `
 
-Previously used question stems from older exams on this SAME material (do not repeat or near-duplicate these; teach additional facets of the material instead):
+--- Existing questions for this SAME material_id ("${material.material_id}") ---
+The numbered list below is every question stem already used in older exams for this material. You MUST treat it as the deduplication source of truth.
+
+Hard requirements:
+1) For every new item, the "question" text must NOT be an exact match to any line below (after trimming and collapsing internal whitespace; case-insensitive OK to compare).
+2) Do not produce near-duplicates: if a new stem would answer the same narrow fact as an old one, rephrase so the sentence structure and framing are clearly different; for MCQ, change all four options, not only the stem.
+3) Prefer new subtopics or angles from the material that do not appear in the list; only revisit a similar learning goal if you fully reword the task.
+
+Prior stems (${priorQuestionTexts.length} total):
 ${priorQuestionTexts.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+---
 `;
 
   return `Create an exam from this material. response in bahasa indonesia
@@ -161,6 +177,27 @@ function lettersToSortedKey(letters: string[]): string {
   return [...new Set(letters.map((l) => l.toUpperCase()))].sort().join(",");
 }
 
+/** Google Sheets cells must be scalars; the API rejects list_value for plain columns. */
+function sheetCellString(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => sheetCellString(v))
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
 function rowsFromPayload(
   examId: string,
   material: MaterialRow,
@@ -179,45 +216,54 @@ function rowsFromPayload(
 
   for (const q of payload.mcq_single) {
     const question_id = crypto.randomUUID();
+    const opts = Array.isArray(q.options) ? q.options : [];
     push({
       question_id,
       order_index: String(order++),
       type: "mcq_single",
-      question_text: q.question,
-      hint_text: q.hint,
-      options_json: JSON.stringify(q.options),
-      correct_answer: q.correctLetter.toUpperCase(),
-      explanation: q.explanation,
+      question_text: sheetCellString(q.question),
+      hint_text: sheetCellString(q.hint),
+      options_json: JSON.stringify(opts.map((o) => sheetCellString(o))),
+      correct_answer: String(q.correctLetter ?? "")
+        .trim()
+        .toUpperCase()
+        .slice(0, 1) || "?",
+      explanation: sheetCellString(q.explanation),
       grading_reference: "",
     });
   }
 
   for (const q of payload.mcq_multi) {
     const question_id = crypto.randomUUID();
+    const opts = Array.isArray(q.options) ? q.options : [];
+    const letters = Array.isArray(q.correctLetters) ? q.correctLetters : [];
     push({
       question_id,
       order_index: String(order++),
       type: "mcq_multi",
-      question_text: q.question,
-      hint_text: q.hint,
-      options_json: JSON.stringify(q.options),
-      correct_answer: lettersToSortedKey(q.correctLetters),
-      explanation: q.explanation,
+      question_text: sheetCellString(q.question),
+      hint_text: sheetCellString(q.hint),
+      options_json: JSON.stringify(opts.map((o) => sheetCellString(o))),
+      correct_answer: lettersToSortedKey(letters.map((l) => String(l))),
+      explanation: sheetCellString(q.explanation),
       grading_reference: "",
     });
   }
 
   for (const q of payload.fill_blank) {
     const question_id = crypto.randomUUID();
+    const answers = Array.isArray(q.acceptableAnswers)
+      ? q.acceptableAnswers.map((a) => sheetCellString(a)).filter(Boolean)
+      : [sheetCellString(q.acceptableAnswers)].filter(Boolean);
     push({
       question_id,
       order_index: String(order++),
       type: "fill_blank",
-      question_text: q.question,
-      hint_text: q.hint,
+      question_text: sheetCellString(q.question),
+      hint_text: sheetCellString(q.hint),
       options_json: "[]",
-      correct_answer: JSON.stringify(q.acceptableAnswers),
-      explanation: q.explanation,
+      correct_answer: JSON.stringify(answers.length ? answers : [""]),
+      explanation: sheetCellString(q.explanation),
       grading_reference: "",
     });
   }
@@ -228,12 +274,12 @@ function rowsFromPayload(
       question_id,
       order_index: String(order++),
       type: "essay",
-      question_text: q.question,
-      hint_text: q.hint,
+      question_text: sheetCellString(q.question),
+      hint_text: sheetCellString(q.hint),
       options_json: "[]",
-      correct_answer: q.modelAnswer,
-      explanation: q.explanation,
-      grading_reference: q.gradingReference,
+      correct_answer: sheetCellString(q.modelAnswer),
+      explanation: sheetCellString(q.explanation),
+      grading_reference: sheetCellString(q.gradingReference),
     });
   }
 
@@ -242,13 +288,15 @@ function rowsFromPayload(
 
 export async function generateExamQuestionRows(
   material: MaterialRow,
-  priorQuestionTexts: string[] = []
+  priorQuestionTexts: string[] = [],
+  options?: { llmProvider?: ExamLlmProvider }
 ): Promise<{ examId: string; rows: ExamQuestionRow[] }> {
+  const provider = options?.llmProvider ?? getExamLlmProvider();
   const variationId = crypto.randomUUID();
-  const payload = await groqChatJson<GenerationPayload>({
+  const payload = await examLlmChatJson<GenerationPayload>(provider, {
     system: GENERATION_SYSTEM,
     user: buildGenerationUserPrompt(material, priorQuestionTexts, variationId),
-    maxTokens: 12000,
+    maxTokens: 8000,
     temperature: 0.82,
   });
   validatePayload(payload);

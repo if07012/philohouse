@@ -5,7 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { QuestionBody } from "../../components/QuestionBody";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
-import type { EvaluationItem, PublicExamQuestion } from "../../lib/types";
+import type {
+  EvaluationItem,
+  ExamAnswerAttemptEntry,
+  PublicExamQuestion,
+} from "../../lib/types";
 import {
   buildPersistedState,
   loadExamState,
@@ -31,6 +35,9 @@ export default function ExamReviewPage() {
   >({});
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
   const [hintUsed, setHintUsed] = useState<Record<string, boolean>>({});
+  const [answerHistory, setAnswerHistory] = useState<
+    Record<string, ExamAnswerAttemptEntry[]>
+  >({});
   const [submitting, setSubmitting] = useState(false);
   const [guardActive, setGuardActive] = useState(false);
 
@@ -39,7 +46,8 @@ export default function ExamReviewPage() {
       nextAnswers: Record<string, string>,
       nextMulti: Record<string, Set<string>>,
       nextFlagged: Record<string, boolean>,
-      nextHintUsed: Record<string, boolean>
+      nextHintUsed: Record<string, boolean>,
+      nextHistory?: Record<string, ExamAnswerAttemptEntry[]>
     ) => {
       const prev = loadExamState(examId);
       saveExamState(
@@ -49,6 +57,7 @@ export default function ExamReviewPage() {
           multiSelections: nextMulti,
           flagged: nextFlagged,
           hintUsed: nextHintUsed,
+          answerHistory: nextHistory ?? prev?.answerHistory ?? {},
           currentIndex: prev?.currentIndex ?? 0,
           submitted: false,
           submissionId: prev?.submissionId,
@@ -84,6 +93,7 @@ export default function ExamReviewPage() {
           setMultiSelections(multiSelectionsFromState(stored.multiAnswers));
           setFlagged(stored.flagged);
           setHintUsed(stored.hintUsed ?? {});
+          setAnswerHistory(stored.answerHistory ?? {});
         } else {
           router.replace(`/examination/${examId}/preview`);
         }
@@ -137,6 +147,8 @@ export default function ExamReviewPage() {
       }
       const merged = mergeMultiIntoAnswers(questions, answers, multiSerialized);
 
+      const historyPayload = loadExamState(examId)?.answerHistory ?? answerHistory;
+
       const res = await fetch("/api/examination/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -145,6 +157,7 @@ export default function ExamReviewPage() {
           answers: merged,
           flaggedQuestionIds: flaggedIds,
           hintQuestionIds,
+          answerHistory: historyPayload,
           persist: true,
         }),
       });
@@ -159,6 +172,7 @@ export default function ExamReviewPage() {
           multiSelections,
           flagged,
           hintUsed,
+          answerHistory: historyPayload,
           currentIndex: prev?.currentIndex ?? 0,
           submitted: true,
           submissionId: json.submissionId,

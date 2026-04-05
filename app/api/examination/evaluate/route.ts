@@ -25,6 +25,15 @@ export async function POST(request: Request) {
     const hintQuestionIds = Array.isArray(body?.hintQuestionIds)
       ? (body.hintQuestionIds as string[])
       : [];
+    let answerHistoryJson = "{}";
+    const rawHistory = body?.answerHistory;
+    if (rawHistory && typeof rawHistory === "object" && !Array.isArray(rawHistory)) {
+      try {
+        answerHistoryJson = JSON.stringify(rawHistory);
+      } catch {
+        answerHistoryJson = "{}";
+      }
+    }
 
     if (!examId?.trim()) {
       return NextResponse.json({ error: "examId is required" }, { status: 400 });
@@ -81,6 +90,7 @@ export async function POST(request: Request) {
         evaluation_json: JSON.stringify(evaluationPayload),
         flagged_question_ids: JSON.stringify(flaggedQuestionIds),
         hint_question_ids: JSON.stringify(hintQuestionIds),
+        answer_history_json: answerHistoryJson,
       });
 
       if (notifyTelegram) {

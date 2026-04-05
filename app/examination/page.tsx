@@ -26,6 +26,7 @@ export default function ExaminationHubPage() {
   const [loadingExams, setLoadingExams] = useState(true);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [llmProvider, setLlmProvider] = useState<"groq" | "ollama">("groq");
 
   const refreshMaterials = useCallback(async () => {
     setLoadingMaterials(true);
@@ -68,7 +69,7 @@ export default function ExaminationHubPage() {
       const res = await fetch("/api/examination/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ materialId }),
+        body: JSON.stringify({ materialId, llmProvider }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
@@ -115,6 +116,29 @@ export default function ExaminationHubPage() {
 
         <section className="card-soft mb-8 p-6">
           <h2 className="text-lg font-semibold">Learning materials</h2>
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+            <span className="text-black/65">Generate with:</span>
+            <label className="inline-flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="llmProvider"
+                checked={llmProvider === "groq"}
+                onChange={() => setLlmProvider("groq")}
+                className="accent-[var(--color-accent)]"
+              />
+              Groq (cloud)
+            </label>
+            <label className="inline-flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="llmProvider"
+                checked={llmProvider === "ollama"}
+                onChange={() => setLlmProvider("ollama")}
+                className="accent-[var(--color-accent)]"
+              />
+              Ollama (local)
+            </label>
+          </div>
           <p className="mt-1 text-sm text-black/65">
             Tab <code className="rounded bg-black/5 px-1">Materials</code>:{" "}
             <code className="rounded bg-black/5 px-1">material_id</code>,{" "}

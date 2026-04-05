@@ -85,6 +85,33 @@ export async function GET(
       hintQuestionIds = [];
     }
 
+    let answerHistory: Record<
+      string,
+      { at: string; answer: string; correct: boolean }[]
+    > = {};
+    try {
+      const parsed = JSON.parse(row.answer_history_json || "{}");
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const [qid, attempts] of Object.entries(parsed)) {
+          if (!Array.isArray(attempts)) continue;
+          answerHistory[qid] = attempts
+            .filter(
+              (a): a is { at: string; answer: string; correct: boolean } =>
+                a != null &&
+                typeof a === "object" &&
+                typeof (a as { at?: unknown }).at === "string"
+            )
+            .map((a) => ({
+              at: String(a.at),
+              answer: String((a as { answer?: unknown }).answer ?? ""),
+              correct: Boolean((a as { correct?: unknown }).correct),
+            }));
+        }
+      }
+    } catch {
+      answerHistory = {};
+    }
+
     const material = await findMaterial(spreadsheetId, row.material_id);
 
     return NextResponse.json({
@@ -95,6 +122,7 @@ export async function GET(
       materialTitle: material?.title ?? "",
       answers,
       hintQuestionIds,
+      answerHistory,
       evaluation,
       explanations,
     });
