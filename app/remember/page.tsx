@@ -405,19 +405,24 @@ export default function RememberPage() {
             }
           }
 
-          const optionBase = [
+          const optionBase: Array<{ surahId: number; ayah: number; text: string }> = [
             {
               surahId: correctApi.surah.number,
               ayah: correctApi.numberInSurah,
               text: correctApi.text.trim(),
             },
-            ...distractors,
+            ...distractors.map((d) => ({
+              surahId: d.surahId,
+              ayah: d.ayah,
+              text: '',
+            })),
           ];
 
           for (let i = 1; i < optionBase.length; i += 1) {
             const optionAyah = await fetchAyahByReference(`${optionBase[i].surahId}:${optionBase[i].ayah}`);
             optionBase[i] = {
-              ...optionBase[i],
+              surahId: optionBase[i].surahId,
+              ayah: optionBase[i].ayah,
               text: optionAyah.text.trim(),
             };
           }
