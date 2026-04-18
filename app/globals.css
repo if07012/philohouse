@@ -1,6 +1,31 @@
+/* Mushaf-style Arabic (common in Indonesian printed / digital mushaf layouts) */
+@import url("https://fonts.googleapis.com/css2?family=Lateef:wght@400;500;600;700&family=Scheherazade+New:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Quran.com Hafs v2 (subset WOFF2 — optional glyph supplement) */
+@font-face {
+  font-family: "Quran Hafs";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://quran.com/fonts/quran/hafs/v2/woff2/p587.woff2") format("woff2");
+}
+
+/* Lateef + Scheherazade: classic Naskh mushaf look widely used in Indonesia-style typography */
+.font-quran-hafs {
+  font-family:
+    "Lateef",
+    "Scheherazade New",
+    "Quran Hafs",
+    "Noto Naskh Arabic",
+    "Traditional Arabic",
+    serif;
+  font-feature-settings: "kern" 1, "liga" 1;
+  font-variant-ligatures: common-ligatures;
+}
 
 :root {
   --color-bg: white;
