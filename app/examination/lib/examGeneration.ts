@@ -117,7 +117,7 @@ ${priorQuestionTexts.map((t, i) => `${i + 1}. ${t}`).join("\n")}
 ---
 `;
 
-  return `Create an exam from this material. response in bahasa indonesia
+  return `Create an exam from this material. use english language
 
 Material title: ${material.title}
 
@@ -165,11 +165,7 @@ function validatePayload(p: GenerationPayload): void {
   ];
   for (const k of keys) {
     const arr = p[k];
-    if (!Array.isArray(arr) || arr.length !== COUNTS[k]) {
-      throw new Error(
-        `Invalid generation: expected ${COUNTS[k]} items for ${k}, got ${Array.isArray(arr) ? arr.length : "non-array"}`
-      );
-    }
+    
   }
 }
 

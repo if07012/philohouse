@@ -40,4 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Mystery Reading — generated cover art (keep folder via .gitkeep)
+/public/mystery-reading/covers/*
+!/public/mystery-reading/covers/.gitkeep
+
 /.claude/settings.local.json

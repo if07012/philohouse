@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -21,6 +21,13 @@ export default function Home() {
 
       <section className="fixed w-screen h-screen flex items-center">
         <HeroCarousel full />
+
+        <Link
+          href="/mystery-reading"
+          className="fixed z-20 bottom-4 right-4 md:bottom-6 md:right-6 rounded-full bg-slate-900/90 text-amber-200 text-xs font-semibold px-4 py-2 border border-amber-500/40 hover:bg-slate-800 transition shadow-lg"
+        >
+          Mystery Reading
+        </Link>
 
         <div className="fixed z-10 md:w-1/2 space-y-6 animate-fade-in bg-[rgba(0,0,0,0.45)] backdrop-blur-md p-8 md:p-16 rounded-xl shadow-soft left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-start">
           <h1 className="text-4xl md:text-5xl font-extrabold text-white">

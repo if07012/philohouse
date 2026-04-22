@@ -37,7 +37,7 @@ export async function ollamaChatJson<T>(params: {
   if (!raw) {
     throw new Error("Ollama returned empty content");
   }
-
+  console.log(raw);
   try {
     return JSON.parse(raw) as T;
   } catch {

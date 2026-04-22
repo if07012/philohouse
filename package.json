@@ -9,12 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.53",
     "@anthropic-ai/claude-code": "^2.1.27",
     "@react-pdf/renderer": "^4.3.2",
+    "ai": "^6.0.168",
     "axios": "^1.13.5",
+    "bcryptjs": "^3.0.3",
     "google-auth-library": "^10.5.0",
     "google-spreadsheet": "^5.0.2",
     "next": "16.1.6",
+    "openai": "^6.34.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-google-recaptcha-v3": "^1.11.0",
