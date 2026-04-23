@@ -2,30 +2,28 @@ import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { generateImage } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { getOpenAIApiKey, getOpenAIImageModel } from "./mysteryEnv";
+import { createGateway } from "@ai-sdk/gateway";
+import { getGatewayApiKey, getGatewayBaseUrl } from "./mysteryEnv";
 
 /**
- * Generate cover via AI SDK `generateImage` and save it under
- * `public/mystery-reading/covers/`.
+ * Generate cover via AI SDK `generateImage` using ByteDance Seedream
+ * and save it under `public/mystery-reading/covers/`.
  */
 export async function generateAiSdkCoverToPublic(params: {
   promptEn: string;
   storyDate: string;
 }): Promise<string | null> {
   try {
-    const provider = createOpenAI({ apiKey: getOpenAIApiKey() });
-    const modelId = getOpenAIImageModel();
+    const provider = createGateway({
+      apiKey: getGatewayApiKey(),
+      baseURL: getGatewayBaseUrl(),
+    });
+    const modelId = "bytedance/seedream-5.0-lite";
 
     const { image } = await generateImage({
       model: provider.image(modelId),
       prompt: params.promptEn,
       size: "1536x1024",
-      providerOptions: {
-        openai: {
-          quality: "high",
-        },
-      },
       maxRetries: 1,
     });
 

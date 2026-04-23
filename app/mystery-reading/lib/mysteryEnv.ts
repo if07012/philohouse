@@ -1,9 +1,11 @@
 ﻿/**
  * Environment checklist (Mystery Reading):
  * - MYSTERY_READING_SPREADSHEET_ID - Google Spreadsheet ID (tabs created on first run)
- * - OPENAI_API_KEY - required (story generation + AI SDK image generation)
- * - OPENAI_MODEL - optional text model, default gpt-4o-mini
- * - OPENAI_IMAGE_MODEL - optional image model, default gpt-image-1
+ * - GATEWAY_API_KEY - required for Gateway AI SDK (ByteDance Seedream image generation)
+ * - GATEWAY_BASE_URL - optional Gateway base URL, default https://gateway.ai.cloudflare.com/v1/
+ * - QWEN_API_KEY - required for story generation (Qwen via OpenAI-compatible API)
+ * - QWEN_MODEL - optional text model, default qwen-plus
+ * - QWEN_BASE_URL - optional Qwen base URL, default https://dashscope-intl.aliyuncs.com/compatible-mode/v1
  * - MYSTERY_SESSION_SECRET - long random string for signed session cookies
  * - MYSTERY_CRON_SECRET or CRON_SECRET - Bearer / ?key= for generate endpoint
  * Reuse existing GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY for Sheets API.
@@ -17,18 +19,28 @@ export function getMysterySpreadsheetId(): string {
   return id;
 }
 
-export function getOpenAIApiKey(): string {
-  const key = process.env.OPENAI_API_KEY?.trim() || "";
-  if (!key) throw new Error("Missing OPENAI_API_KEY environment variable");
+export function getQwenApiKey(): string {
+  const key = process.env.QWEN_API_KEY?.trim() || "";
+  if (!key) throw new Error("Missing QWEN_API_KEY environment variable");
   return key;
 }
 
-export function getOpenAIModel(): string {
-  return process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+export function getQwenModel(): string {
+  return process.env.QWEN_MODEL?.trim() || "qwen-plus";
 }
 
-export function getOpenAIImageModel(): string {
-  return process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1";
+export function getQwenBaseUrl(): string {
+  return process.env.QWEN_BASE_URL?.trim() || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
+}
+
+export function getGatewayApiKey(): string {
+  const key = process.env.GATEWAY_API_KEY?.trim() || "";
+  if (!key) throw new Error("Missing GATEWAY_API_KEY environment variable");
+  return key;
+}
+
+export function getGatewayBaseUrl(): string {
+  return process.env.GATEWAY_BASE_URL?.trim() || "https://gateway.ai.cloudflare.com/v1/";
 }
 
 export function getMysterySessionSecret(): string {
