@@ -1,11 +1,11 @@
 import crypto from "crypto";
-import { getOpenAIModel } from "./mysteryEnv";
+import { getQwenModel } from "./mysteryEnv";
+import { qwenChatJson } from "./qwenJson";
 import type {
   CharacterBrief,
   MysteryQuizQuestion,
   QuizKind,
 } from "./types";
-import { ollamaChatJson } from "@/app/examination/lib/ollama";
 
 const SYSTEM = `You are an expert Indonesian children's author and reading-comprehension designer.
 Output ONLY valid JSON matching the user schema. No markdown, no code fences.
@@ -134,7 +134,7 @@ export async function generateDailyMysteryPackage(params: {
   difficultyBand?: string;
 }): Promise<GeneratedDailyPackage> {
   const difficultyBand = params.difficultyBand?.trim() || "menengah";
-  const data = await ollamaChatJson<GenerationResult>({
+  const data = await qwenChatJson<GenerationResult>({
     system: SYSTEM,
     user: buildUserPrompt(params.storyDate, difficultyBand),
     temperature: 0.75,
@@ -174,6 +174,6 @@ export async function generateDailyMysteryPackage(params: {
     image_prompt,
     image_url,
     questions,
-    openai_model: getOpenAIModel(),
+    openai_model: getQwenModel(),
   };
 }
