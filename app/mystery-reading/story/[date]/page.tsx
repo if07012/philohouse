@@ -75,13 +75,11 @@ export default function MysteryStoryPage() {
 
       {showImg && (
         <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-800 mb-5">
-          <Image
+          <img
             src={data.image_url}
             alt=""
-            fill
             className="object-cover"
             sizes="(max-width: 512px) 100vw, 512px"
-            unoptimized={data.image_url.includes("blob.core.windows.net")}
           />
         </div>
       )}
