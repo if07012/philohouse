@@ -138,13 +138,10 @@ export default function MysteryReadingHome() {
                 >
                   {showImg && (
                     <div className="relative aspect-[16/9] w-full border-b border-slate-800">
-                      <Image
+                      <img
                         src={s.image_url}
                         alt=""
-                        fill
                         className="object-cover"
-                        sizes="(max-width: 512px) 100vw, 512px"
-                        unoptimized={s.image_url.includes("blob.core.windows.net")}
                       />
                     </div>
                   )}
