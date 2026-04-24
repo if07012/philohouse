@@ -36,9 +36,9 @@ export async function GET(request: Request) {
     const storyDate = String(url.searchParams.get("storyDate") || "").trim();
     const includeReview =
       String(url.searchParams.get("includeReview") || "").trim() === "1";
-    if (!childId || !storyDate) {
+    if (!childId) {
       return NextResponse.json(
-        { error: "childId dan storyDate wajib" },
+        { error: "childId wajib" },
         { status: 400 }
       );
     }
@@ -49,6 +49,21 @@ export async function GET(request: Request) {
     const child = await findChildById(spreadsheetId, childId);
     if (!child || String(child.family_id).trim() !== session.familyId) {
       return NextResponse.json({ error: "Anak tidak ditemukan" }, { status: 403 });
+    }
+
+    // List attempts for this child (used by homepage to mark taken stories).
+    if (!storyDate) {
+      const attempts = await listAttemptsByChild(spreadsheetId, childId);
+      return NextResponse.json({
+        ok: true,
+        submitted: false,
+        attempts: attempts.map((a) => ({
+          attemptId: String(a.attempt_id || "").trim(),
+          storyDate: String(a.story_date || "").trim(),
+          completedAt: String(a.completed_at || "").trim(),
+          scorePercent: Number(a.score_percent) || 0,
+        })),
+      });
     }
 
     const attempt = await findAttemptByChildAndDate(
@@ -246,9 +261,8 @@ export async function POST(request: Request) {
     });
 
     const allScores = [...priorAttempts.map((r) => Number(r.score_percent) || 0), scorePercent];
-    const rollingAvg =
-      allScores.reduce((s, v) => s + v, 0) / Math.max(1, allScores.length);
-    const rollingRounded = Math.round(rollingAvg * 10) / 10;
+    const sumOfScores =
+      allScores.reduce((s, v) => s + v, 0);
 
     const attemptId = crypto.randomUUID();
     const completedAt = new Date().toISOString();
@@ -271,7 +285,7 @@ export async function POST(request: Request) {
       longest_streak: String(streak.longest_streak),
       last_completed_date: streak.last_completed_date,
       badges_json: badges,
-      rolling_avg_score: String(rollingRounded),
+      rolling_avg_score: String(sumOfScores / 10),
     });
 
     const breakdown = skillBreakdownFromResults(results);

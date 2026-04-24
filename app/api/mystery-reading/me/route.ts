@@ -28,6 +28,7 @@ export async function GET() {
         nickname: c.nickname,
         xp: Number(c.xp) || 0,
         level: Number(c.level) || 1,
+        rolling_avg_score: Number(c.rolling_avg_score) || 0,
         current_streak: Number(c.current_streak) || 0,
         longest_streak: Number(c.longest_streak) || 0,
         last_completed_date: c.last_completed_date || "",

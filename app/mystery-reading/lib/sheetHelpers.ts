@@ -3,6 +3,7 @@ import {
   ensureSheetWithHeaders,
   getGoogleSheet,
   listRowsBySheet,
+  updateSheetData,
 } from "@/app/lib/googleSheets";
 import {
   ATTEMPT_HEADERS,
@@ -204,20 +205,36 @@ export async function updateChildByChildId(
   spreadsheetId: string,
   childId: string,
   patch: Record<string, string>
-): Promise<void> {
-  const doc = await getGoogleSheet(spreadsheetId);
-  const sheet = doc.sheetsByTitle[MYSTERY_SHEETS.children];
-  if (!sheet) throw new Error("MysteryChildren sheet missing");
+): Promise<Record<string, string>> {
+  // Ensure schema is present so node-google-spreadsheet will actually write values.
+  // If the sheet exists but is missing some headers, writes to those fields are ignored.
+  const sheet = await ensureSheetWithHeaders(
+    spreadsheetId,
+    MYSTERY_SHEETS.children,
+    [...CHILD_HEADERS]
+  );
   const rows = await sheet.getRows();
   const row = rows.find((r) => {
     const o = r.toObject() as Record<string, string>;
     return String(o.child_id || "").trim() === childId.trim();
   });
   if (!row) throw new Error("Child not found");
-  for (const [k, v] of Object.entries(patch)) {
-    (row as unknown as Record<string, string>)[k] = v;
-  }
-  await row.save();
+  const rowIndex = rows.indexOf(row);
+  if (rowIndex < 0) throw new Error("Child row index not found");
+
+  // Use shared Google Sheets helper for writes + cache invalidation.
+  // Note: updateSheetData uses sheet index (not sheet id).
+  const existingUnknown = row.toObject() as Record<string, unknown>;
+  const existing = Object.fromEntries(
+    Object.entries(existingUnknown).map(([k, v]) => [
+      k,
+      typeof v === "string" ? v : v == null ? "" : String(v),
+    ])
+  ) as Record<string, string>;
+  const merged: Record<string, string> = { ...existing, ...patch };
+  await row.delete();
+  await appendSheetData(spreadsheetId, [merged], MYSTERY_SHEETS.children);
+  return merged;
 }
 
 export async function appendAttemptRow(

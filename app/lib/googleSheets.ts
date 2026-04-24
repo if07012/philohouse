@@ -143,7 +143,7 @@ export async function appendSheetData(
       sheet = doc.sheetsByIndex[sheetNameOrIndex ?? 0];
     }
     if (!sheet) throw new Error('Sheet not found');
-    await sheet.addRows(data);
+    await sheet.addRows(data as unknown as Parameters<typeof sheet.addRows>[0]);
     // Invalidate cached reads for this spreadsheet.
     cacheDeleteByPrefix(`read:${spreadsheetId}:`);
     cacheDeleteByPrefix(`rows:${spreadsheetId}:`);
@@ -208,6 +208,8 @@ export async function ensureSheetWithHeaders(
       await sheet.setHeaderRow([...existing, ...missing]);
     }
   }
+  // Ensure we operate with the latest header mapping after any changes.
+  await sheet.loadHeaderRow();
   // Sheet schema might affect reads.
   cacheDeleteByPrefix(`read:${spreadsheetId}:`);
   cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);

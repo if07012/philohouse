@@ -15,6 +15,7 @@ type MeChild = {
   longest_streak: number;
   last_completed_date: string;
   badges_json: string;
+  rolling_avg_score: number;
 };
 
 type MeResponse = {
@@ -37,6 +38,12 @@ export default function MysteryReadingHome() {
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
   const [stories, setStories] = useState<StorySummary[]>([]);
   const [storiesLoading, setStoriesLoading] = useState(true);
+  const [takenDates, setTakenDates] = useState<Set<string>>(new Set());
+  const [takenByDate, setTakenByDate] = useState<Record<string, { scorePercent: number }>>(
+    {}
+  );
+  const [takenLoading, setTakenLoading] = useState(false);
+  const [filter, setFilter] = useState<"all" | "taken" | "untaken">("all");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -85,12 +92,63 @@ export default function MysteryReadingHome() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!me?.authenticated || !selectedChild) {
+        setTakenDates(new Set());
+        setTakenByDate({});
+        setFilter("all");
+        return;
+      }
+      setTakenLoading(true);
+      try {
+        const r = await fetch(
+          `/api/mystery-reading/attempts?childId=${encodeURIComponent(selectedChild)}`,
+          { credentials: "include" }
+        );
+        const j = await r.json().catch(() => ({}));
+        const attempts = Array.isArray(j?.attempts) ? (j.attempts as unknown[]) : [];
+        const byDate: Record<string, { scorePercent: number }> = {};
+        for (const a of attempts) {
+          if (!a || typeof a !== "object") continue;
+          const storyDate = String((a as { storyDate?: unknown }).storyDate ?? "").trim();
+          if (!storyDate) continue;
+          const scorePercent = Number(
+            (a as { scorePercent?: unknown }).scorePercent ?? 0
+          );
+          byDate[storyDate] = { scorePercent: Number.isFinite(scorePercent) ? scorePercent : 0 };
+        }
+        if (!cancelled) {
+          setTakenDates(new Set(Object.keys(byDate)));
+          setTakenByDate(byDate);
+        }
+      } catch {
+        if (!cancelled) {
+          setTakenDates(new Set());
+          setTakenByDate({});
+        }
+      } finally {
+        if (!cancelled) setTakenLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [me?.authenticated, selectedChild]);
+
   const selectChild = (id: string) => {
     setSelectedChild(id);
     localStorage.setItem(CHILD_KEY, id);
   };
 
   const child = me?.children?.find((c) => c.child_id === selectedChild);
+  const canShowTaken = Boolean(me?.authenticated && selectedChild);
+  const visibleStories = stories.filter((s) => {
+    if (!canShowTaken || filter === "all") return true;
+    const taken = takenDates.has(s.story_date);
+    return filter === "taken" ? taken : !taken;
+  });
 
   let badges: string[] = [];
   try {
@@ -113,66 +171,6 @@ export default function MysteryReadingHome() {
           jaga streak!
         </p>
       </header>
-
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
-          Cerita tersedia
-        </h2>
-        {storiesLoading ? (
-          <p className="text-center text-slate-500 text-sm">Memuat daftar cerita…</p>
-        ) : stories.length === 0 ? (
-          <p className="rounded-2xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-center text-slate-500 text-sm">
-            Belum ada cerita di perpustakaan. Tambahkan lewat generate (mis. panggil API{" "}
-            <code className="text-amber-200/80 text-xs">/api/mystery-reading/daily/generate</code>{" "}
-            dengan kunci yang dikonfigurasi).
-          </p>
-        ) : (
-          <ul className="space-y-4">
-            {stories.map((s) => {
-              const enc = encodeURIComponent(s.story_date);
-              const showImg = s.image_url?.startsWith("http");
-              return (
-                <li
-                  key={s.story_date}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden"
-                >
-                  {showImg && (
-                    <div className="relative aspect-[16/9] w-full border-b border-slate-800">
-                      <img
-                        src={s.image_url}
-                        alt=""
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="p-4 space-y-2">
-                    <p className="text-xs text-slate-500">{s.story_date}</p>
-                    <h3 className="text-lg font-semibold text-white leading-snug">{s.title}</h3>
-                    {s.summary ? (
-                      <p className="text-slate-400 text-sm line-clamp-3">{s.summary}</p>
-                    ) : null}
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <Link
-                        href={`/mystery-reading/story/${enc}`}
-                        className="inline-flex flex-1 min-w-[100px] justify-center rounded-xl bg-amber-500/90 px-3 py-2.5 text-sm font-semibold text-slate-950 hover:bg-amber-400"
-                      >
-                        Baca
-                      </Link>
-                      <Link
-                        href={`/mystery-reading/quiz/${enc}`}
-                        className="inline-flex flex-1 min-w-[100px] justify-center rounded-xl border border-violet-500/50 px-3 py-2.5 text-sm font-semibold text-violet-200 hover:bg-violet-950/50"
-                      >
-                        Kuis
-                      </Link>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
       {loading ? (
         <p className="text-center text-slate-500">Memuat profil…</p>
       ) : (
@@ -229,11 +227,10 @@ export default function MysteryReadingHome() {
                         key={c.child_id}
                         type="button"
                         onClick={() => selectChild(c.child_id)}
-                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                          selectedChild === c.child_id
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${selectedChild === c.child_id
                             ? "bg-amber-500 text-slate-950"
                             : "bg-slate-800 text-slate-300"
-                        }`}
+                          }`}
                       >
                         {c.nickname}
                       </button>
@@ -261,8 +258,8 @@ export default function MysteryReadingHome() {
                     <p className="text-slate-500 text-xs">XP</p>
                   </div>
                   <div className="rounded-xl bg-slate-800/80 p-3">
-                    <p className="text-amber-400 font-bold text-lg">{child.current_streak}</p>
-                    <p className="text-slate-500 text-xs">Streak</p>
+                    <p className="text-amber-400 font-bold text-lg">{child.rolling_avg_score}</p>
+                    <p className="text-slate-500 text-xs">Total Score</p>
                   </div>
                 </div>
               )}
@@ -283,6 +280,147 @@ export default function MysteryReadingHome() {
           )}
         </>
       )}
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
+          Cerita tersedia
+        </h2>
+        {canShowTaken && stories.length > 0 ? (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFilter("all")}
+              className={`rounded-full px-4 py-2 text-sm font-semibold border transition ${
+                filter === "all"
+                  ? "bg-amber-500 text-slate-950 border-amber-400"
+                  : "bg-slate-900/60 text-slate-200 border-slate-700 hover:border-slate-500"
+              }`}
+            >
+              Semua
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("untaken")}
+              className={`rounded-full px-4 py-2 text-sm font-semibold border transition ${
+                filter === "untaken"
+                  ? "bg-slate-200 text-slate-950 border-slate-100"
+                  : "bg-slate-900/60 text-slate-200 border-slate-700 hover:border-slate-500"
+              }`}
+            >
+              Belum diambil
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("taken")}
+              className={`rounded-full px-4 py-2 text-sm font-semibold border transition ${
+                filter === "taken"
+                  ? "bg-emerald-500 text-slate-950 border-emerald-400"
+                  : "bg-slate-900/60 text-slate-200 border-slate-700 hover:border-slate-500"
+              }`}
+            >
+              Sudah diambil
+            </button>
+            {takenLoading ? (
+              <span className="text-xs text-slate-500 ml-1">mengecek…</span>
+            ) : null}
+          </div>
+        ) : null}
+        {storiesLoading ? (
+          <p className="text-center text-slate-500 text-sm">Memuat daftar cerita…</p>
+        ) : stories.length === 0 ? (
+          <p className="rounded-2xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-center text-slate-500 text-sm">
+            Belum ada cerita di perpustakaan. Tambahkan lewat generate (mis. panggil API{" "}
+            <code className="text-amber-200/80 text-xs">/api/mystery-reading/daily/generate</code>{" "}
+            dengan kunci yang dikonfigurasi).
+          </p>
+        ) : (
+          <ul className="space-y-4">
+            {visibleStories.map((s) => {
+              const enc = encodeURIComponent(s.story_date);
+              const showImg = s.image_url?.startsWith("http");
+              const taken = takenDates.has(s.story_date);
+              const score = taken ? takenByDate[s.story_date]?.scorePercent : null;
+              return (
+                <li
+                  key={s.story_date}
+                  className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden"
+                >
+                  {showImg && (
+                    <div className="relative aspect-[16/9] w-full border-b border-slate-800">
+                      <img
+                        src={s.image_url}
+                        alt=""
+                        className="object-cover"
+                      />
+                      {me?.authenticated && selectedChild ? (
+                        <div className="absolute top-3 right-3">
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${
+                              taken
+                                ? "bg-emerald-950/60 text-emerald-200 border-emerald-700/50"
+                                : "bg-slate-950/60 text-slate-200 border-slate-700/60"
+                            }`}
+                          >
+                            {taken
+                              ? `Sudah diambil${score != null ? ` · ${score}%` : ""}`
+                              : "Belum diambil"}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                  <div className="p-4 space-y-2">
+                    <p className="text-xs text-slate-500">{s.story_date}</p>
+                    <h3 className="text-lg font-semibold text-white leading-snug">{s.title}</h3>
+                    {s.summary ? (
+                      <p className="text-slate-400 text-sm line-clamp-3">{s.summary}</p>
+                    ) : null}
+                    {!showImg && me?.authenticated && selectedChild ? (
+                      <div className="pt-1">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${
+                            taken
+                              ? "bg-emerald-950/60 text-emerald-200 border-emerald-700/50"
+                              : "bg-slate-950/60 text-slate-200 border-slate-700/60"
+                          }`}
+                        >
+                          {taken
+                            ? `Sudah diambil${score != null ? ` · ${score}%` : ""}`
+                            : "Belum diambil"}
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Link
+                        href={`/mystery-reading/story/${enc}`}
+                        className="inline-flex flex-1 min-w-[100px] justify-center rounded-xl bg-amber-500/90 px-3 py-2.5 text-sm font-semibold text-slate-950 hover:bg-amber-400"
+                      >
+                        Baca
+                      </Link>
+                      {!canShowTaken || !taken ? (
+                        <Link
+                          href={`/mystery-reading/quiz/${enc}`}
+                          className="inline-flex flex-1 min-w-[100px] justify-center rounded-xl border border-violet-500/50 px-3 py-2.5 text-sm font-semibold text-violet-200 hover:bg-violet-950/50"
+                        >
+                          Kuis
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/mystery-reading/quiz/${enc}`}
+                          className="inline-flex flex-1 min-w-[100px] justify-center rounded-xl border border-emerald-600/40 bg-emerald-950/20 px-3 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-950/40"
+                        >
+                          Lihat hasil
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+
     </div>
   );
 }
