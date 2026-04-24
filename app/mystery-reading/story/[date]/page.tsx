@@ -201,9 +201,12 @@ export default function MysteryStoryPage() {
       )}
 
       {quizSubmitted ? (
-        <div className="mt-8 mb-4 block text-center rounded-2xl bg-slate-900/60 border border-slate-800 py-4 font-semibold text-slate-400">
-          Kuis sudah di-submit
-        </div>
+        <Link
+          href={`/mystery-reading/quiz/${encodeURIComponent(date)}`}
+          className="mt-8 mb-4 block text-center rounded-2xl bg-slate-900/60 border border-slate-800 py-4 font-semibold text-slate-200 hover:border-slate-600 hover:bg-slate-900/70 transition"
+        >
+          Lihat hasil kuis
+        </Link>
       ) : (
         <Link
           href={`/mystery-reading/quiz/${encodeURIComponent(date)}`}

@@ -34,6 +34,8 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const childId = String(url.searchParams.get("childId") || "").trim();
     const storyDate = String(url.searchParams.get("storyDate") || "").trim();
+    const includeReview =
+      String(url.searchParams.get("includeReview") || "").trim() === "1";
     if (!childId || !storyDate) {
       return NextResponse.json(
         { error: "childId dan storyDate wajib" },
@@ -58,11 +60,92 @@ export async function GET(request: Request) {
       return NextResponse.json({ submitted: false });
     }
 
+    if (!includeReview) {
+      return NextResponse.json({
+        submitted: true,
+        attemptId: String(attempt.attempt_id || "").trim(),
+        completedAt: String(attempt.completed_at || "").trim(),
+        scorePercent: Number(attempt.score_percent) || 0,
+      });
+    }
+
+    const quizRow = await getQuizByDate(spreadsheetId, storyDate);
+    if (!quizRow?.questions_json) {
+      return NextResponse.json(
+        { error: "Kuis tidak tersedia" },
+        { status: 404 }
+      );
+    }
+
+    let questions: MysteryQuizQuestion[] = [];
+    try {
+      questions = JSON.parse(quizRow.questions_json) as MysteryQuizQuestion[];
+    } catch {
+      return NextResponse.json({ error: "Data kuis rusak" }, { status: 500 });
+    }
+    if (!Array.isArray(questions) || questions.length !== 10) {
+      return NextResponse.json({ error: "Jumlah soal tidak valid" }, { status: 500 });
+    }
+
+    let answers: unknown = [];
+    try {
+      answers = JSON.parse(String(attempt.answers_json || "[]"));
+    } catch {
+      answers = [];
+    }
+    if (!Array.isArray(answers) || answers.length !== 10) {
+      return NextResponse.json({ error: "Data jawaban rusak" }, { status: 500 });
+    }
+
+    const results: PerQuestionResult[] = [];
+    for (let i = 0; i < 10; i++) {
+      const q = questions[i];
+      const a = Number(answers[i]);
+      const correct =
+        Number.isInteger(a) && a >= 0 && a <= 3 && a === q.correct_index;
+      results.push({
+        question_id: q.question_id,
+        kind: q.kind,
+        correct,
+      });
+    }
+
+    const breakdown = skillBreakdownFromResults(results);
+    const review = questions.map((q, i) => ({
+      question_id: q.question_id,
+      kind: q.kind,
+      question: q.question,
+      options: q.options,
+      chosen: Number(answers[i]),
+      correct_index: q.correct_index,
+      explanation: q.explanation,
+      correct: results[i]?.correct ?? false,
+    }));
+
     return NextResponse.json({
       submitted: true,
       attemptId: String(attempt.attempt_id || "").trim(),
       completedAt: String(attempt.completed_at || "").trim(),
       scorePercent: Number(attempt.score_percent) || 0,
+      xpAwarded: Number(attempt.xp_awarded) || 0,
+      child: {
+        childId: String(child.child_id || "").trim(),
+        nickname: String(child.nickname || "").trim(),
+        xp: Number(child.xp) || 0,
+        level: Number(child.level) || 0,
+        currentStreak: Number(child.current_streak) || 0,
+        longestStreak: Number(child.longest_streak) || 0,
+        badges: (() => {
+          try {
+            const b = JSON.parse(String(child.badges_json || "[]"));
+            return Array.isArray(b) ? (b as string[]) : [];
+          } catch {
+            return [];
+          }
+        })(),
+      },
+      vocabProxyPct: vocabProxyPercent(breakdown),
+      review,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

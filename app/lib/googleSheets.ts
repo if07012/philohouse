@@ -2,7 +2,7 @@ import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import crypto from 'crypto';
 
-const CACHE_TTL_MS = 1 * 60 * 1000; // 1 minute
+const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 
 type CacheEntry<T> = { expiresAt: number; value: T };
 
@@ -36,6 +36,13 @@ function cacheDeleteByPrefix(prefix: string) {
   const store = getCacheStore();
   for (const k of store.keys()) {
     if (k.startsWith(prefix)) store.delete(k);
+  }
+}
+
+function cacheDeleteMatching(predicate: (key: string) => boolean) {
+  const store = getCacheStore();
+  for (const k of store.keys()) {
+    if (predicate(k)) store.delete(k);
   }
 }
 
@@ -88,16 +95,30 @@ export async function readSheetData(spreadsheetId: string, sheetName?: string) {
     const cached = cacheGet<Record<string, unknown>[]>(cacheKey);
     if (cached) return cached;
 
-    const doc = await getGoogleSheet(spreadsheetId);
-    let sheet = sheetName ? doc.sheetsByTitle[sheetName] : doc.sheetsByIndex[0];
+    const inflightKey = `${cacheKey}:promise`;
+    const inflight = cacheGet<Promise<Record<string, unknown>[]>>(inflightKey);
+    if (inflight) return inflight;
 
-    if (!sheet) {
-      sheet = await doc.addSheet({ title: sheetName });
+    const p = (async () => {
+      const doc = await getGoogleSheet(spreadsheetId);
+      let sheet = sheetName ? doc.sheetsByTitle[sheetName] : doc.sheetsByIndex[0];
+
+      if (!sheet) {
+        sheet = await doc.addSheet({ title: sheetName });
+      }
+      const rows = await sheet.getRows();
+      const out = rows.map(row => row.toObject());
+      cacheSet(cacheKey, out);
+      return out;
+    })();
+    cacheSet(inflightKey, p, 30_000);
+    try {
+      return await p;
+    } finally {
+      const store = getCacheStore();
+      store.delete(inflightKey);
     }
-    const rows = await sheet.getRows();
-    const out = rows.map(row => row.toObject());
-    cacheSet(cacheKey, out);
-    return out;
+
   } catch (error) {
     console.error('Error reading from Google Sheet:', error);
     throw error;
@@ -126,6 +147,8 @@ export async function appendSheetData(
     // Invalidate cached reads for this spreadsheet.
     cacheDeleteByPrefix(`read:${spreadsheetId}:`);
     cacheDeleteByPrefix(`rows:${spreadsheetId}:`);
+    cacheDeleteMatching((k) => k.startsWith(`read:${spreadsheetId}:`) && k.endsWith(":promise"));
+    cacheDeleteMatching((k) => k.startsWith(`rows:${spreadsheetId}:`) && k.endsWith(":promise"));
     return { success: true, message: 'Data added successfully' };
   } catch (error) {
     console.error('Error writing to Google Sheet:', error);
@@ -155,6 +178,8 @@ export async function updateSheetData(
     await row.save();
     cacheDeleteByPrefix(`read:${spreadsheetId}:`);
     cacheDeleteByPrefix(`rows:${spreadsheetId}:`);
+    cacheDeleteMatching((k) => k.startsWith(`read:${spreadsheetId}:`) && k.endsWith(":promise"));
+    cacheDeleteMatching((k) => k.startsWith(`rows:${spreadsheetId}:`) && k.endsWith(":promise"));
 
     return { success: true, message: 'Row updated successfully' };
   } catch (error) {
@@ -186,6 +211,10 @@ export async function ensureSheetWithHeaders(
   // Sheet schema might affect reads.
   cacheDeleteByPrefix(`read:${spreadsheetId}:`);
   cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
+  cacheDeleteMatching((k) => k.startsWith(`read:${spreadsheetId}:`) && k.endsWith(":promise"));
+  cacheDeleteMatching(
+    (k) => k.startsWith(`rows:${spreadsheetId}:${sheetName}`) && k.endsWith(":promise")
+  );
   return sheet;
 }
 
@@ -197,13 +226,26 @@ export async function listRowsBySheet(
   const cached = cacheGet<Record<string, unknown>[]>(cacheKey);
   if (cached) return cached;
 
-  const doc = await getGoogleSheet(spreadsheetId);
-  const sheet = doc.sheetsByTitle[sheetName];
-  if (!sheet) return [];
-  const rows = await sheet.getRows();
-  const out = rows.map((r) => r.toObject());
-  cacheSet(cacheKey, out);
-  return out;
+  const inflightKey = `${cacheKey}:promise`;
+  const inflight = cacheGet<Promise<Record<string, unknown>[]>>(inflightKey);
+  if (inflight) return inflight;
+
+  const p = (async () => {
+    const doc = await getGoogleSheet(spreadsheetId);
+    const sheet = doc.sheetsByTitle[sheetName];
+    if (!sheet) return [];
+    const rows = await sheet.getRows();
+    const out = rows.map((r) => r.toObject());
+    cacheSet(cacheKey, out);
+    return out;
+  })();
+  cacheSet(inflightKey, p, 30_000);
+  try {
+    return await p;
+  } finally {
+    const store = getCacheStore();
+    store.delete(inflightKey);
+  }
 }
 
 export async function createRowWithId(
@@ -216,6 +258,10 @@ export async function createRowWithId(
   await sheet.addRow({ id, ...data });
   cacheDeleteByPrefix(`read:${spreadsheetId}:`);
   cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
+  cacheDeleteMatching((k) => k.startsWith(`read:${spreadsheetId}:`) && k.endsWith(":promise"));
+  cacheDeleteMatching(
+    (k) => k.startsWith(`rows:${spreadsheetId}:${sheetName}`) && k.endsWith(":promise")
+  );
   return { id };
 }
 
@@ -273,6 +319,10 @@ export async function updateRowById(
   await row.save();
   cacheDeleteByPrefix(`read:${spreadsheetId}:`);
   cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
+  cacheDeleteMatching((k) => k.startsWith(`read:${spreadsheetId}:`) && k.endsWith(":promise"));
+  cacheDeleteMatching(
+    (k) => k.startsWith(`rows:${spreadsheetId}:${sheetName}`) && k.endsWith(":promise")
+  );
   return { success: true };
 }
 
@@ -293,5 +343,9 @@ export async function deleteRowById(
   await row.delete();
   cacheDeleteByPrefix(`read:${spreadsheetId}:`);
   cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
+  cacheDeleteMatching((k) => k.startsWith(`read:${spreadsheetId}:`) && k.endsWith(":promise"));
+  cacheDeleteMatching(
+    (k) => k.startsWith(`rows:${spreadsheetId}:${sheetName}`) && k.endsWith(":promise")
+  );
   return { success: true };
 }
