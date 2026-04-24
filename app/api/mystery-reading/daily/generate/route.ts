@@ -72,13 +72,6 @@ async function handleGenerate(
     });
 
     let imageUrl = pkg.image_url;
-    const localCover = await generateAiSdkCoverToPublic({
-      promptEn: pkg.image_prompt,
-      storyDate,
-    });
-    if (localCover) {
-      imageUrl = localCover;
-    }
 
     await upsertDailyRow(spreadsheetId, {
       story_date: storyDate,
@@ -107,7 +100,7 @@ async function handleGenerate(
       questionCount: pkg.questions.length,
       replaced: true,
       imageUrl,
-      coverSavedToPublic: Boolean(localCover),
+      coverSavedToPublic: Boolean(false),
       imageProvider: "ai-sdk",
     });
   } catch (e) {

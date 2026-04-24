@@ -24,6 +24,53 @@ import type {
   PerQuestionResult,
 } from "@/app/mystery-reading/lib/types";
 
+export async function GET(request: Request) {
+  const session = await getMysterySession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const childId = String(url.searchParams.get("childId") || "").trim();
+    const storyDate = String(url.searchParams.get("storyDate") || "").trim();
+    if (!childId || !storyDate) {
+      return NextResponse.json(
+        { error: "childId dan storyDate wajib" },
+        { status: 400 }
+      );
+    }
+
+    const spreadsheetId = getMysterySpreadsheetId();
+    await ensureMysterySheets(spreadsheetId);
+
+    const child = await findChildById(spreadsheetId, childId);
+    if (!child || String(child.family_id).trim() !== session.familyId) {
+      return NextResponse.json({ error: "Anak tidak ditemukan" }, { status: 403 });
+    }
+
+    const attempt = await findAttemptByChildAndDate(
+      spreadsheetId,
+      childId,
+      storyDate
+    );
+    if (!attempt) {
+      return NextResponse.json({ submitted: false });
+    }
+
+    return NextResponse.json({
+      submitted: true,
+      attemptId: String(attempt.attempt_id || "").trim(),
+      completedAt: String(attempt.completed_at || "").trim(),
+      scorePercent: Number(attempt.score_percent) || 0,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    console.error("mystery attempts GET:", e);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   const session = await getMysterySession();
   if (!session) {

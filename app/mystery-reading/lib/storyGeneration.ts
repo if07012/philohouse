@@ -158,8 +158,7 @@ export async function generateDailyMysteryPackage(params: {
         }))
         .filter((c) => c.name)
     : [];
-  const image_prompt = String(data.image_prompt || "").trim();
-  if (!image_prompt) throw new Error("Missing image_prompt");
+  
 
   const questions = normalizeQuestions(data.questions || []);
 
@@ -171,7 +170,7 @@ export async function generateDailyMysteryPackage(params: {
     content_md,
     clues,
     characters,
-    image_prompt,
+    image_prompt:"",
     image_url,
     questions,
     openai_model: getOpenAIModel(),

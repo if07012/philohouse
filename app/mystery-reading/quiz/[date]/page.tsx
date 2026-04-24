@@ -34,6 +34,7 @@ export default function MysteryQuizPage() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [result, setResult] = useState<{
     scorePercent: number;
     xpAwarded: number;
@@ -50,6 +51,25 @@ export default function MysteryQuizPage() {
     setLoading(true);
     setErr(null);
     try {
+      const childId =
+        typeof window !== "undefined" ? localStorage.getItem(CHILD_KEY) : null;
+      if (childId) {
+        const s = await fetch(
+          `/api/mystery-reading/attempts?childId=${encodeURIComponent(
+            childId
+          )}&storyDate=${encodeURIComponent(date)}`,
+          { credentials: "include" }
+        );
+        const sj = await s.json().catch(() => ({}));
+        if (s.ok && sj?.submitted) {
+          setAlreadySubmitted(true);
+          setQuestions([]);
+          setAnswers([]);
+          setErr("Kuis untuk cerita ini sudah di-submit dan tidak bisa diambil kembali.");
+          return;
+        }
+      }
+
       const r = await fetch(`/api/mystery-reading/daily/${encodeURIComponent(date)}`);
       const j = await r.json();
       if (!r.ok) {
@@ -60,6 +80,7 @@ export default function MysteryQuizPage() {
       const qs = (j.quiz?.questions || []) as PublicQ[];
       setQuestions(qs);
       setAnswers(Array(qs.length).fill(-1));
+      setAlreadySubmitted(false);
     } catch {
       setErr("Jaringan error");
     } finally {
@@ -131,6 +152,11 @@ export default function MysteryQuizPage() {
     return (
       <div className="px-4 pt-8 max-w-lg mx-auto space-y-4">
         <p className="text-amber-200">{err}</p>
+        {alreadySubmitted && (
+          <p className="text-xs text-slate-500">
+            Kamu bisa lihat progres di beranda / profil anak.
+          </p>
+        )}
         <Link href="/mystery-reading" className="text-violet-300 underline text-sm">
           Beranda
         </Link>
