@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { clearAllGoogleSheetsCache } from "@/app/lib/googleSheets";
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   const required = process.env.CACHE_ADMIN_TOKEN;
   if (!required) {
     return NextResponse.json(
