@@ -2,6 +2,50 @@ import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import crypto from 'crypto';
 
+const CACHE_TTL_MS = 1 * 60 * 1000; // 1 minute
+
+type CacheEntry<T> = { expiresAt: number; value: T };
+
+function getCacheStore() {
+  const g = globalThis as unknown as {
+    __remember_google_sheets_cache__?: Map<string, CacheEntry<unknown>>;
+  };
+  if (!g.__remember_google_sheets_cache__) {
+    g.__remember_google_sheets_cache__ = new Map<string, CacheEntry<unknown>>();
+  }
+  return g.__remember_google_sheets_cache__;
+}
+
+function cacheGet<T>(key: string): T | null {
+  const store = getCacheStore();
+  const hit = store.get(key);
+  if (!hit) return null;
+  if (Date.now() > hit.expiresAt) {
+    store.delete(key);
+    return null;
+  }
+  return hit.value as T;
+}
+
+function cacheSet<T>(key: string, value: T, ttlMs = CACHE_TTL_MS) {
+  const store = getCacheStore();
+  store.set(key, { expiresAt: Date.now() + ttlMs, value } as CacheEntry<unknown>);
+}
+
+function cacheDeleteByPrefix(prefix: string) {
+  const store = getCacheStore();
+  for (const k of store.keys()) {
+    if (k.startsWith(prefix)) store.delete(k);
+  }
+}
+
+export function clearAllGoogleSheetsCache() {
+  const store = getCacheStore();
+  const size = store.size;
+  store.clear();
+  return { cleared: size };
+}
+
 // Initialize auth - see https://theoephraim.github.io/node-google-spreadsheet/#/getting-started/authentication
 const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
@@ -14,13 +58,36 @@ const jwt = new JWT({
 });
 
 export async function getGoogleSheet(spreadsheetId: string) {
-  const doc = new GoogleSpreadsheet(spreadsheetId, jwt);
-  await doc.loadInfo();
-  return doc;
+  const key = `doc:${spreadsheetId}`;
+  const cached = cacheGet<GoogleSpreadsheet>(key);
+  if (cached) return cached;
+
+  // Cache the in-flight load to avoid thundering-herd.
+  const inflightKey = `doc_promise:${spreadsheetId}`;
+  const inflight = cacheGet<Promise<GoogleSpreadsheet>>(inflightKey);
+  if (inflight) return inflight;
+
+  const p = (async () => {
+    const doc = new GoogleSpreadsheet(spreadsheetId, jwt);
+    await doc.loadInfo();
+    cacheSet(key, doc);
+    return doc;
+  })();
+  cacheSet(inflightKey, p, 30_000);
+  try {
+    return await p;
+  } finally {
+    const store = getCacheStore();
+    store.delete(inflightKey);
+  }
 }
 
 export async function readSheetData(spreadsheetId: string, sheetName?: string) {
   try {
+    const cacheKey = `read:${spreadsheetId}:${sheetName || '__index0__'}`;
+    const cached = cacheGet<Record<string, unknown>[]>(cacheKey);
+    if (cached) return cached;
+
     const doc = await getGoogleSheet(spreadsheetId);
     let sheet = sheetName ? doc.sheetsByTitle[sheetName] : doc.sheetsByIndex[0];
 
@@ -28,7 +95,9 @@ export async function readSheetData(spreadsheetId: string, sheetName?: string) {
       sheet = await doc.addSheet({ title: sheetName });
     }
     const rows = await sheet.getRows();
-    return rows.map(row => row.toObject());
+    const out = rows.map(row => row.toObject());
+    cacheSet(cacheKey, out);
+    return out;
   } catch (error) {
     console.error('Error reading from Google Sheet:', error);
     throw error;
@@ -37,7 +106,7 @@ export async function readSheetData(spreadsheetId: string, sheetName?: string) {
 
 export async function appendSheetData(
   spreadsheetId: string,
-  data: Record<string, any>[],
+  data: Record<string, unknown>[],
   sheetNameOrIndex?: string | number
 ) {
   try {
@@ -54,6 +123,9 @@ export async function appendSheetData(
     }
     if (!sheet) throw new Error('Sheet not found');
     await sheet.addRows(data);
+    // Invalidate cached reads for this spreadsheet.
+    cacheDeleteByPrefix(`read:${spreadsheetId}:`);
+    cacheDeleteByPrefix(`rows:${spreadsheetId}:`);
     return { success: true, message: 'Data added successfully' };
   } catch (error) {
     console.error('Error writing to Google Sheet:', error);
@@ -64,7 +136,7 @@ export async function appendSheetData(
 export async function updateSheetData(
   spreadsheetId: string,
   rowIndex: number,
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   sheetIndex = 0
 ) {
   try {
@@ -78,9 +150,11 @@ export async function updateSheetData(
 
     const row = rows[rowIndex];
     Object.entries(data).forEach(([key, value]) => {
-      (row as any)[key] = value;
+      (row as unknown as Record<string, unknown>)[key] = value;
     });
     await row.save();
+    cacheDeleteByPrefix(`read:${spreadsheetId}:`);
+    cacheDeleteByPrefix(`rows:${spreadsheetId}:`);
 
     return { success: true, message: 'Row updated successfully' };
   } catch (error) {
@@ -109,6 +183,9 @@ export async function ensureSheetWithHeaders(
       await sheet.setHeaderRow([...existing, ...missing]);
     }
   }
+  // Sheet schema might affect reads.
+  cacheDeleteByPrefix(`read:${spreadsheetId}:`);
+  cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
   return sheet;
 }
 
@@ -116,21 +193,29 @@ export async function listRowsBySheet(
   spreadsheetId: string,
   sheetName: string
 ) {
+  const cacheKey = `rows:${spreadsheetId}:${sheetName}`;
+  const cached = cacheGet<Record<string, unknown>[]>(cacheKey);
+  if (cached) return cached;
+
   const doc = await getGoogleSheet(spreadsheetId);
   const sheet = doc.sheetsByTitle[sheetName];
   if (!sheet) return [];
   const rows = await sheet.getRows();
-  return rows.map((r) => r.toObject());
+  const out = rows.map((r) => r.toObject());
+  cacheSet(cacheKey, out);
+  return out;
 }
 
 export async function createRowWithId(
   spreadsheetId: string,
   sheetName: string,
-  data: Record<string, any>
+  data: Record<string, unknown>
 ) {
   const id = crypto.randomUUID();
   const sheet = await ensureSheetWithHeaders(spreadsheetId, sheetName, ['id']);
   await sheet.addRow({ id, ...data });
+  cacheDeleteByPrefix(`read:${spreadsheetId}:`);
+  cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
   return { id };
 }
 
@@ -143,7 +228,10 @@ export async function findRowIndexById(
   const sheet = doc.sheetsByTitle[sheetName];
   if (!sheet) return -1;
   const rows = await sheet.getRows();
-  const idx = rows.findIndex((r: any) => (r as any)['id'] === id);
+  const idx = rows.findIndex((r) => {
+    const rid = (r as unknown as Record<string, unknown>)["id"];
+    return typeof rid === "string" && rid === id;
+  });
   return idx;
 }
 
@@ -156,24 +244,35 @@ export async function readRowById(
   const sheet = doc.sheetsByTitle[sheetName];
   if (!sheet) return null;
   const rows = await sheet.getRows();
-  const row = rows.find((r: any) => (r as any)['id'] === id);
-  return row ? (row as any).toObject() : null;
+  const row = rows.find((r) => {
+    const rid = (r as unknown as Record<string, unknown>)["id"];
+    return typeof rid === "string" && rid === id;
+  });
+  if (!row) return null;
+  return (row as unknown as { toObject(): Record<string, unknown> }).toObject();
 }
 
 export async function updateRowById(
   spreadsheetId: string,
   sheetName: string,
   id: string,
-  data: Record<string, any>
+  data: Record<string, unknown>
 ) {
   const doc = await getGoogleSheet(spreadsheetId);
   const sheet = doc.sheetsByTitle[sheetName];
   if (!sheet) throw new Error('Sheet not found');
   const rows = await sheet.getRows();
-  const row = rows.find((r: any) => (r as any)['id'] === id);
+  const row = rows.find((r) => {
+    const rid = (r as unknown as Record<string, unknown>)["id"];
+    return typeof rid === "string" && rid === id;
+  });
   if (!row) throw new Error('Row not found');
-  Object.entries(data).forEach(([k, v]) => ((row as any)[k] = v));
+  Object.entries(data).forEach(([k, v]) => {
+    (row as unknown as Record<string, unknown>)[k] = v;
+  });
   await row.save();
+  cacheDeleteByPrefix(`read:${spreadsheetId}:`);
+  cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
   return { success: true };
 }
 
@@ -186,8 +285,13 @@ export async function deleteRowById(
   const sheet = doc.sheetsByTitle[sheetName];
   if (!sheet) throw new Error('Sheet not found');
   const rows = await sheet.getRows();
-  const row = rows.find((r: any) => (r as any)['id'] === id);
+  const row = rows.find((r) => {
+    const rid = (r as unknown as Record<string, unknown>)["id"];
+    return typeof rid === "string" && rid === id;
+  });
   if (!row) throw new Error('Row not found');
   await row.delete();
+  cacheDeleteByPrefix(`read:${spreadsheetId}:`);
+  cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
   return { success: true };
 }
