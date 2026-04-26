@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   TranslationAttempt,
   TranslationTrainingItem,
@@ -8,15 +8,19 @@ import type {
 
 type ItemsResponse =
   | {
-      ok: true;
-      sheetName: string;
-      count: number;
-      items: TranslationTrainingItem[];
-    }
+    ok: true;
+    sheetName: string;
+    count: number;
+    items: TranslationTrainingItem[];
+  }
   | { error: string };
 
 type AttemptsResponse = { ok: true; attempts: TranslationAttempt[] } | { error: string };
 type SubmitResponse = { ok: true; attempt: TranslationAttempt } | { error: string };
+
+type GenerateFromMaterialsResponse =
+  | { ok: true; appended: number; questions: string[]; statements: string[] }
+  | { error: string };
 
 const PASS_PCT = 80;
 
@@ -46,40 +50,40 @@ export default function TranslationTrainingPage() {
   const [unitsByItem, setUnitsByItem] = useState<Record<string, string[]>>({});
   const [segmenting, setSegmenting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [generatingFromMaterials, setGeneratingFromMaterials] = useState(false);
+
+  const loadItems = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/translation-training/items", {
+        cache: "no-store",
+      });
+      const j = (await r.json()) as ItemsResponse;
+      if ("error" in j) {
+        setError(j.error || "Gagal memuat data.");
+        setItems([]);
+      } else {
+        const nextItems = Array.isArray(j.items) ? j.items : [];
+        setItems(nextItems);
+        setSelectedId((prev) => {
+          if (prev && nextItems.some((it) => it.id === prev)) return prev;
+          return nextItems[0]?.id ?? null;
+        });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal memuat data.");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const r = await fetch("/api/translation-training/items", {
-          cache: "no-store",
-        });
-        const j = (await r.json()) as ItemsResponse;
-        if (!cancelled) {
-          if ("error" in j) {
-            setError(j.error || "Gagal memuat data.");
-            setItems([]);
-          } else {
-            const nextItems = Array.isArray(j.items) ? j.items : [];
-            setItems(nextItems);
-            setSelectedId((prev) => prev || nextItems[0]?.id || null);
-          }
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Gagal memuat data.");
-          setItems([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadItems();
+  }, [loadItems]);
+
+
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +109,16 @@ export default function TranslationTrainingPage() {
     () => items.find((it) => it.id === selectedId) || null,
     [items, selectedId]
   );
+
+  useEffect(() => {
+    const voices = window.speechSynthesis.getVoices();
+    const text = selectedItem?.english || "";
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.7;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }, [selectedItem]);
 
   const attemptsByItem = useMemo(() => {
     const map = new Map<string, TranslationAttempt[]>();
@@ -198,8 +212,8 @@ export default function TranslationTrainingPage() {
     const avg =
       done > 0
         ? Math.round(
-            ([...latestByItem.values()].reduce((sum, a) => sum + a.score_percent, 0) / done) * 10
-          ) / 10
+          ([...latestByItem.values()].reduce((sum, a) => sum + a.score_percent, 0) / done) * 10
+        ) / 10
         : 0;
     return { done, passed, total: items.length, avg };
   }, [items.length, latestByItem]);
@@ -237,6 +251,26 @@ export default function TranslationTrainingPage() {
     }
   }
 
+  async function handleGenerateFromMaterials() {
+    setGeneratingFromMaterials(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/translation-training/generate-from-materials", {
+        method: "GET",
+      });
+      const j = (await r.json()) as GenerateFromMaterialsResponse;
+      if ("error" in j || !r.ok) {
+        setError(("error" in j && j.error) || "Gagal generate dari List Material.");
+        return;
+      }
+      await loadItems();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal generate dari List Material.");
+    } finally {
+      setGeneratingFromMaterials(false);
+    }
+  }
+
   return (
     <div className="pt-6 px-4 max-w-3xl mx-auto text-[#1f3f43]">
       <header className="mb-8">
@@ -250,6 +284,26 @@ export default function TranslationTrainingPage() {
           Pilih teks dari daftar latihan, lalu kerjakan di section terjemahan. Semua hasil dan
           koreksi disimpan untuk dipantau sebagai progress.
         </p>
+        <div className="mt-4">
+          {false && <button
+            type="button"
+            onClick={() => void handleGenerateFromMaterials()}
+            disabled={generatingFromMaterials || loading}
+            className="inline-flex justify-center rounded-xl border border-[#35858E] bg-[#35858E] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#2f767d] disabled:opacity-50"
+          >
+            {generatingFromMaterials
+              ? "Men-generate…"
+              : "Generate"}
+          </button>
+          }
+          <p className="mt-2 text-xs text-[#5d816f] max-w-xl">
+            Membaca sheet <span className="font-semibold text-[#35858E]">List Material</span> (kolom{" "}
+            <span className="font-semibold">Material</span>), lalu AI menulis 5 pertanyaan dan 5
+            pernyataan bahasa Inggris yang relevan dengan tema materi, dan menyimpannya ke{" "}
+            <span className="font-semibold text-[#35858E]">Translation-EN-ID</span> kolom{" "}
+            <span className="font-semibold">english</span>.
+          </p>
+        </div>
       </header>
 
       {error ? (
@@ -303,11 +357,10 @@ export default function TranslationTrainingPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedId(it.id)}
-                      className={`w-full text-left rounded-xl border px-3 py-2.5 transition ${
-                        active
-                          ? "border-[#35858E] bg-[#C2D099]/55"
-                          : "border-[#7DA78C]/40 bg-[#f4f7e8] hover:bg-[#C2D099]/30"
-                      }`}
+                      className={`w-full text-left rounded-xl border px-3 py-2.5 transition ${active
+                        ? "border-[#35858E] bg-[#C2D099]/55"
+                        : "border-[#7DA78C]/40 bg-[#f4f7e8] hover:bg-[#C2D099]/30"
+                        }`}
                     >
                       <p className="text-xs text-[#5d816f]">Latihan {idx + 1}</p>
                       <p className="text-sm text-[#1f3f43] line-clamp-2">{it.english}</p>
@@ -339,22 +392,20 @@ export default function TranslationTrainingPage() {
                     <button
                       type="button"
                       onClick={() => setInputMode("full")}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
-                        inputMode === "full"
-                          ? "bg-[#35858E] border-[#35858E] text-white"
-                          : "bg-[#f4f7e8] border-[#7DA78C]/60 text-[#2f6b71]"
-                      }`}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${inputMode === "full"
+                        ? "bg-[#35858E] border-[#35858E] text-white"
+                        : "bg-[#f4f7e8] border-[#7DA78C]/60 text-[#2f6b71]"
+                        }`}
                     >
                       Mode kalimat penuh
                     </button>
                     <button
                       type="button"
                       onClick={() => setInputMode("phrase")}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
-                        inputMode === "phrase"
-                          ? "bg-[#35858E] border-[#35858E] text-white"
-                          : "bg-[#f4f7e8] border-[#7DA78C]/60 text-[#2f6b71]"
-                      }`}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${inputMode === "phrase"
+                        ? "bg-[#35858E] border-[#35858E] text-white"
+                        : "bg-[#f4f7e8] border-[#7DA78C]/60 text-[#2f6b71]"
+                        }`}
                     >
                       Mode per kata (AI)
                     </button>

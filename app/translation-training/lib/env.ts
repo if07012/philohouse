@@ -19,6 +19,11 @@ export function getTranslationSheetName(): string {
   return process.env.TRANSLATION_TRAINING_SHEET_NAME?.trim() || "Translation-EN-ID";
 }
 
+/** Sheet tab that lists source material; column "Material" (or fallbacks) is read for themes. */
+export function getMaterialListSheetName(): string {
+  return process.env.TRANSLATION_MATERIAL_LIST_SHEET_NAME?.trim() || "List Material";
+}
+
 export function getTranslationAttemptSheetName(): string {
   return (
     process.env.TRANSLATION_TRAINING_ATTEMPT_SHEET_NAME?.trim() ||

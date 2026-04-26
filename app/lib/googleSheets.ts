@@ -125,6 +125,34 @@ export async function readSheetData(spreadsheetId: string, sheetName?: string) {
   }
 }
 
+export async function clearSheetData(spreadsheetId: string, sheetName?: string) {
+  try {
+    const cacheKey = `read:${spreadsheetId}:${sheetName || '__index0__'}`;
+    cacheDeleteByPrefix(cacheKey);
+    const inflightKey = `${cacheKey}:promise`;
+    const inflight = cacheGet<Promise<Record<string, unknown>[]>>(inflightKey);
+    if (inflight) return inflight;
+
+    const p = (async () => {
+      const doc = await getGoogleSheet(spreadsheetId);
+      let sheet = sheetName ? doc.sheetsByTitle[sheetName] : doc.sheetsByIndex[0];
+
+      if (!sheet) {
+        sheet = await doc.addSheet({ title: sheetName });
+      }
+      const rows = await sheet.getRows();
+      for (const row of rows) {
+        await row.delete();
+      }
+      return { success: true };
+    })();
+    return await p;
+  } catch (error) {
+    console.error('Error reading from Google Sheet:', error);
+    throw error;
+  }
+}
+
 export async function appendSheetData(
   spreadsheetId: string,
   data: Record<string, unknown>[],

@@ -3,7 +3,7 @@
  * Uses TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID (comma/space-separated).
  */
 export async function sendTelegramHtmlMessage(
-  message: string
+  message: string, isHtml: boolean = true
 ): Promise<{ success: boolean; sent?: number; error?: string }> {
   const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
   const telegramChatIds = process.env.TELEGRAM_CHAT_ID;
@@ -23,7 +23,7 @@ export async function sendTelegramHtmlMessage(
 
   const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
   let sent = 0;
-
+  console.log(message);
   for (const chatId of chatIdArray) {
     try {
       const response = await fetch(telegramApiUrl, {
@@ -32,7 +32,7 @@ export async function sendTelegramHtmlMessage(
         body: JSON.stringify({
           chat_id: chatId,
           text: message,
-          parse_mode: "HTML",
+          parse_mode: isHtml ? "HTML" : "Markdown",
           disable_web_page_preview: false,
         }),
       });
