@@ -1,77 +1,73 @@
 import Link from "next/link";
 
+export function GameRules() {
+  const Section = ({ title, children }) => (<div className='bg-white rounded-2xl shadow p-6 space-y-4'><h2 className='text-2xl font-bold text-slate-800'>{title}</h2>{children}</div>);
+  const Item = ({ children }) => (<li className='leading-relaxed text-slate-700'>{children}</li>);
+  return <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 md:p-10'>
+    <div className='max-w-4xl mx-auto space-y-6'>
+      <div className='text-center space-y-2'>
+        <h1 className='text-4xl font-extrabold text-indigo-700'>🎮 Aturan Main Game</h1>
+        <p className='text-slate-600'>Rajin belajar = bonus waktu bermain</p>
+      </div>
+
+      <Section title='⏰ Waktu Gratis'>
+        <ul className='list-disc pl-6'><Item>Main game gratis setiap <b>Minggu selama 1 jam</b>.</Item></ul>
+      </Section>
+
+      <Section title='🏆 Bonus Tambahan'>
+        <div className='grid md:grid-cols-2 gap-4'>
+          <div className='rounded-xl bg-emerald-50 p-4'>
+            <h3 className='font-bold text-emerald-700'>📚 Mystery Reading</h3>
+            <p>Selesaikan 6 soal dan kumpulkan <b>minimal 50 poin</b>:</p>
+            <ul className='list-disc pl-6'><Item>+1 jam Sabtu</Item><Item>+1 jam Minggu</Item></ul>
+          </div>
+          <div className='rounded-xl bg-sky-50 p-4'>
+            <h3 className='font-bold text-sky-700'>🇬🇧 Translation English</h3>
+            <p>5 latihan per hari selama 5 hari dengan nilai <b>minimal 80%</b>. Jika tidak tahu arti kata, boleh melihat kamus:</p>
+            <ul className='list-disc pl-6'><Item>+1 jam Jumat</Item><Item>+1 jam Sabtu</Item></ul>
+          </div>
+        </div>
+      </Section>
+
+      <Section title='💪 Bonus Challenge Tambahan'>
+        <div className='grid md:grid-cols-2 gap-4'>
+          <div className='rounded-xl bg-lime-50 p-4'>
+            <h3 className='font-bold text-lime-700'>🏃 Olahraga di Rumah</h3>
+            <p>Lakukan challenge 5 hari (Senin-Jumat):</p>
+            <p><b>+30 menit main game di hari Sabtu</b></p>
+          </div>
+          <div className='rounded-xl bg-violet-50 p-4'>
+            <h3 className='font-bold text-violet-700'>📖 Hafalan Surat Pendek</h3>
+            <p>Hafal 10 ayat:</p>
+            <p><b>+60 menit Sabtu</b> dan <b>+60 menit Minggu</b></p>
+            <p>Jika hafal 4 ayat, bonus dihitung proporsional: 60 ÷ 10 × 4 = 24 menit.</p>
+          </div>
+        </div>
+      </Section>
+
+      <Section title='⚠️ Pengurangan Waktu'>
+        <div className='space-y-4'>
+          <div className='bg-rose-50 rounded-xl p-4'><b>🧺 Cucian tidak masuk keranjang</b><p>-3 menit</p></div>
+          <div className='bg-amber-50 rounded-xl p-4'><b>🕌 Sholat Subuh lewat 05.45</b><p>Kurang sesuai menit telat. Contoh: 05.46 = -1 menit, 05.50 = -5 menit.</p></div>
+          <div className='bg-orange-50 rounded-xl p-4'><b>🚿 Mandi lewat 06.05</b><p>06.10 = -5 menit, 06.20 = -15 menit.</p></div>
+        </div>
+      </Section>
+
+      <Section title='📺 Aturan YouTube'>
+        <ul className='list-disc pl-6 space-y-2'>
+          <Item>Jatah YouTube <b>30 menit setiap hari</b>.</Item>
+          <Item>Tambahan <b>1 jam YouTube</b> jika menyelesaikan <b>10 soal Translation dalam sehari</b>.</Item>
+        </ul>
+      </Section>
+
+      <div className='text-center text-lg font-semibold text-indigo-700 pb-8'>🌟 Disiplin + Belajar = Hadiah Lebih Banyak!</div>
+    </div>
+  </div>
+}
+
 export default function RulesPage() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-lg sm:p-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-dark-blue mb-4 text-center">
-          Aturan Main Game
-        </h1>
-        <p className="text-sm sm:text-base text-gray-600 mb-6 text-center">
-          Ketentuan jatah bermain game berdasarkan ibadah dan kegiatan harian.
-        </p>
-
-        <section className="mb-6">
-          <h2 className="text-lg sm:text-xl font-semibold text-dark-blue mb-2">
-            1. Main Game Sore (Hari Biasa)
-          </h2>
-          <ul className="list-disc list-inside text-sm sm:text-base text-gray-700 space-y-1">
-            <li>
-              <strong>Ngaji minimal 2 lembar</strong> → dapat jatah <strong>1 jam</strong>.
-            </li>
-            <li>
-              <strong>Ngaji 3 lembar</strong> → dapat jatah <strong>1,5 jam</strong>.
-            </li>
-          </ul>
-        </section>
-
-        <section className="mb-6">
-          <h2 className="text-lg sm:text-xl font-semibold text-dark-blue mb-2">
-            2. Main Game Pagi
-          </h2>
-          <p className="text-sm sm:text-base text-gray-700 mb-2">
-            Dapat jatah <strong>1 jam</strong> jika memenuhi semua syarat berikut:
-          </p>
-          <ul className="list-disc list-inside text-sm sm:text-base text-gray-700 space-y-1">
-            <li>Tidur siang di hari sebelumnya.</li>
-            <li>Hafalan vocabulary 3 level atau Hafalan ayat Quran 3 ayat.</li>
-            <li>Solat subuh di masjid.</li>
-          </ul>
-        </section>
-
-        <section className="mb-6">
-          <h2 className="text-lg sm:text-xl font-semibold text-dark-blue mb-2">
-            3. Main Game di Weekend
-          </h2>
-          <ul className="list-disc list-inside text-sm sm:text-base text-gray-700 space-y-1">
-            <li>
-              Jatah <strong>2 jam</strong> diberikan secara otomatis (Jika Gampang bangun sahur).
-            </li>
-            <li>
-              Untuk main di <strong>sore hari</strong> di weekend: tetap berlaku aturan
-              ngaji minimal 2 lembar (sesuai poin 1).
-            </li>
-            <li>
-              <strong>Penambahan jam:</strong> bisa dari hafalan vocabulary untuk 3 level (1 Jam), maksimal{" "}
-              <strong>2 jam (6 level)</strong> tambahan.
-            </li>
-            <li>
-              <strong>Penambahan jam lagi:</strong> hafalan ayat Quran{" "}
-              <strong>3 ayat = 1 jam</strong> tambahan.
-            </li>
-          </ul>
-        </section>
-
-        <div className="flex justify-center gap-3 mt-6 flex-wrap">
-          <Link
-            href="/todo"
-            className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-dark-blue px-6 py-3 text-sm sm:text-base font-semibold text-white shadow-md transition-colors hover:opacity-90"
-          >
-            Todo Harian
-          </Link>
-        </div>
-      </div>
-    </div>
+    <GameRules />
   );
 }
 
