@@ -1,4 +1,8 @@
+"use client";
+import { useRouter } from "next/navigation";
+
 export default function GameRules() {
+    const router = useRouter();
     const Section = ({ title, children }: { title?: string, children: any }) => (<div className='bg-white rounded-2xl shadow p-6 space-y-4'><h2 className='text-2xl font-bold text-slate-800'>{title}</h2>{children}</div>);
     const Item = ({ children }: { children: any }) => (<li className='leading-relaxed text-slate-700'>{children}</li>);
     return <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 md:p-10'>
@@ -14,27 +18,24 @@ export default function GameRules() {
 
             <Section title='🏆 Bonus Tambahan'>
                 <div className='grid md:grid-cols-2 gap-4'>
-                    <div className='rounded-xl bg-emerald-50 p-4'>
+                    <div className='rounded-xl bg-emerald-50 p-4 cursor-pointer' onClick={() => router.push('/mystery-reading')}>
                         <h3 className='font-bold text-emerald-700'>📚 Mystery Reading</h3>
                         <p>Selesaikan 6 soal dan kumpulkan <b>minimal 50 poin</b>:</p>
                         <ul className='list-disc pl-6'><Item>+1 jam Sabtu</Item><Item>+1 jam Minggu</Item></ul>
                     </div>
-                    <div className='rounded-xl bg-sky-50 p-4'>
+                    <div className='rounded-xl bg-sky-50 p-4 cursor-pointer' onClick={() => router.push('/translation-training')}>
                         <h3 className='font-bold text-sky-700'>🇬🇧 Translation English</h3>
                         <p>5 latihan per hari selama 5 hari dengan nilai <b>minimal 80%</b>. Jika tidak tahu arti kata, boleh melihat kamus:</p>
                         <ul className='list-disc pl-6'><Item>+1 jam Jumat</Item><Item>+1 jam Sabtu</Item></ul>
                     </div>
                 </div>
-            </Section>
-
-            <Section title='💪 Bonus Challenge Tambahan'>
                 <div className='grid md:grid-cols-2 gap-4'>
-                    <div className='rounded-xl bg-lime-50 p-4'>
+                    <div className='rounded-xl bg-lime-50 p-4 cursor-pointer' onClick={() => router.push('/challange')}>
                         <h3 className='font-bold text-lime-700'>🏃 Olahraga di Rumah</h3>
                         <p>Lakukan challenge 5 hari (Senin-Jumat):</p>
                         <p><b>+30 menit main game di hari Sabtu</b></p>
                     </div>
-                    <div className='rounded-xl bg-violet-50 p-4'>
+                    <div className='rounded-xl bg-violet-50 p-4 cursor-pointer' onClick={() => router.push('/remember')}>
                         <h3 className='font-bold text-violet-700'>📖 Hafalan Surat Pendek</h3>
                         <p>Hafal 10 ayat:</p>
                         <p><b>+60 menit Sabtu</b> dan <b>+60 menit Minggu</b></p>
