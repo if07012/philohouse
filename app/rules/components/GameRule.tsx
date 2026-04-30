@@ -33,6 +33,7 @@ export default function GameRules() {
                     <div className='rounded-xl bg-lime-50 p-4 cursor-pointer' onClick={() => router.push('/challange')}>
                         <h3 className='font-bold text-lime-700'>🏃 Olahraga di Rumah</h3>
                         <p>Lakukan challenge 5 hari (Senin-Jumat):</p>
+                        <p><b>+60 menit main game di hari Jumat</b></p>
                         <p><b>+30 menit main game di hari Sabtu</b></p>
                     </div>
                     <div className='rounded-xl bg-violet-50 p-4 cursor-pointer' onClick={() => router.push('/remember')}>
