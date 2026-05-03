@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ClipboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type {
   TranslationAttempt,
   TranslationTrainingItem,
@@ -23,6 +23,21 @@ type GenerateFromMaterialsResponse =
   | { error: string };
 
 const PASS_PCT = 80;
+
+function copyTargetAllowsClipboard(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest(
+      'textarea, [contenteditable="true"], input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="hidden"])'
+    )
+  );
+}
+
+function blockProtectedClipboard(e: ClipboardEvent<HTMLElement>) {
+  if (copyTargetAllowsClipboard(e.target)) return;
+  e.preventDefault();
+  e.clipboardData?.setData("text/plain", "");
+}
 
 function bySeverityDesc(a: { severity: number }, b: { severity: number }) {
   return (b.severity || 0) - (a.severity || 0);
@@ -272,7 +287,11 @@ export default function TranslationTrainingPage() {
   }
 
   return (
-    <div className="pt-6 px-4 max-w-3xl mx-auto text-[#1f3f43]">
+    <div
+      className="pt-6 px-4 max-w-3xl mx-auto text-[#1f3f43] select-none"
+      onCopy={blockProtectedClipboard}
+      onCut={blockProtectedClipboard}
+    >
       <header className="mb-8">
         <p className="text-[#35858E] text-xs font-semibold uppercase tracking-widest mb-2">
           Translation Training
@@ -419,7 +438,7 @@ export default function TranslationTrainingPage() {
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
                       rows={4}
-                      className="w-full rounded-xl border border-[#7DA78C] bg-[#f4f7e8] px-3 py-2 text-[#1f3f43] placeholder:text-[#7DA78C] focus:outline-none focus:ring-2 focus:ring-[#35858E]/50"
+                      className="w-full rounded-xl border border-[#7DA78C] bg-[#f4f7e8] px-3 py-2 text-[#1f3f43] placeholder:text-[#7DA78C] focus:outline-none focus:ring-2 focus:ring-[#35858E]/50 select-text"
                       placeholder="Tulis terjemahanmu di sini…"
                     />
                   ) : (
@@ -443,7 +462,7 @@ export default function TranslationTrainingPage() {
                                 return next;
                               })
                             }
-                            className="mt-2 w-full rounded-lg border border-[#7DA78C] bg-white px-3 py-2 text-sm text-[#1f3f43] placeholder:text-[#7DA78C] focus:outline-none focus:ring-2 focus:ring-[#35858E]/50"
+                            className="mt-2 w-full rounded-lg border border-[#7DA78C] bg-white px-3 py-2 text-sm text-[#1f3f43] placeholder:text-[#7DA78C] focus:outline-none focus:ring-2 focus:ring-[#35858E]/50 select-text"
                             placeholder="Arti unit kata ini dalam Bahasa Indonesia..."
                           />
                         </div>
