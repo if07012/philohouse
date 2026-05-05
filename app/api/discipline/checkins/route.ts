@@ -12,6 +12,8 @@ import {
   determineStatus,
 } from '@/app/discipline/lib/timeUtils';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/discipline/checkins
  * Get check-ins for today or a specific date

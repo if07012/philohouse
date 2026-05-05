@@ -4,6 +4,8 @@ import { TasksSection } from '@/app/discipline/components/TasksSection';
 import { CheckInsSection } from '@/app/discipline/components/CheckInsSection';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Discipline Tracker Main Page
  * Shows today's tasks and check-ins
@@ -66,7 +68,8 @@ export default async function DisciplinePage() {
  */
 async function fetchTasks() {
   try {
-    const response = await fetch(`${process.env.APP_BASE_URL || 'http://localhost:3000'}/api/discipline/tasks`, {
+    const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const response = await fetch(`${baseUrl}/api/discipline/tasks`, {
       cache: 'no-store',
     });
     return await response.json();
@@ -81,7 +84,8 @@ async function fetchTasks() {
  */
 async function fetchCheckIns(date: string) {
   try {
-    const response = await fetch(`${process.env.APP_BASE_URL || 'http://localhost:3000'}/api/discipline/checkins?date=${date}`, {
+    const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const response = await fetch(`${baseUrl}/api/discipline/checkins?date=${date}`, {
       cache: 'no-store',
     });
     return await response.json();

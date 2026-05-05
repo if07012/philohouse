@@ -9,6 +9,8 @@ import {
 import { getCurrentDateInJakarta } from '@/app/discipline/lib/timeUtils';
 import { appendSheetData } from '@/app/lib/googleSheets';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/discipline/tasks
  * Get all tasks from Google Sheet

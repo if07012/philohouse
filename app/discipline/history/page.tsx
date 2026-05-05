@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { CheckInCard } from '../components/CheckInCard';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * History Page - Shows all check-ins
  */
@@ -35,7 +37,8 @@ export default async function DisciplineHistoryPage() {
 
 async function fetchCheckIns() {
   try {
-    const response = await fetch(`${process.env.APP_BASE_URL || 'http://localhost:3000/'}api/discipline/checkins`, {
+    const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const response = await fetch(`${baseUrl}/api/discipline/checkins`, {
       cache: 'no-store',
     });
     const result = await response.json();
