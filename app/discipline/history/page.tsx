@@ -35,7 +35,7 @@ export default async function DisciplineHistoryPage() {
 
 async function fetchCheckIns() {
   try {
-    const response = await fetch(`${process.env.APP_BASE_URL || 'http://localhost:3000'}/api/discipline/checkins`, {
+    const response = await fetch(`${process.env.APP_BASE_URL || 'http://localhost:3000/'}api/discipline/checkins`, {
       cache: 'no-store',
     });
     const result = await response.json();

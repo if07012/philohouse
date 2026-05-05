@@ -1,6 +1,5 @@
 'use client';
 
-import { formatTime } from '../lib/timeUtils';
 
 interface CheckIn {
   id: string;
