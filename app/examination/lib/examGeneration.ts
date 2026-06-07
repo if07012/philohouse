@@ -117,7 +117,7 @@ ${priorQuestionTexts.map((t, i) => `${i + 1}. ${t}`).join("\n")}
 ---
 `;
 
-  return `Create an exam from this material. use english language
+  return `Create an exam from this material. use Indonesian language
 
 Material title: ${material.title}
 
