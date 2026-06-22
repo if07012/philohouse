@@ -13,6 +13,7 @@
     "@anthropic-ai/claude-code": "^2.1.27",
     "@react-pdf/renderer": "^4.3.2",
     "ai": "^6.0.168",
+    "antd": "^6.3.7",
     "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
     "google-auth-library": "^10.5.0",

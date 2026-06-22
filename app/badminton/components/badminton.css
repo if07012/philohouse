@@ -1,0 +1,100 @@
+/* Horizontal scroll for tables on small screens (fallback / nested tables) */
+.badminton-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-left: -4px;
+  margin-right: -4px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.badminton-table-scroll .ant-table {
+  min-width: 100%;
+}
+
+/* Scrollable tabs on mobile */
+.badminton-tabs .ant-tabs-nav {
+  margin-bottom: 12px !important;
+}
+
+.badminton-tabs .ant-tabs-nav-wrap {
+  overflow: visible !important;
+}
+
+.badminton-tabs .ant-tabs-nav-list {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.badminton-tabs .ant-tabs-nav-list::-webkit-scrollbar {
+  display: none;
+}
+
+.badminton-tabs .ant-tabs-tab {
+  flex-shrink: 0;
+  padding: 8px 12px !important;
+  font-size: 13px;
+}
+
+/* Mobile card list spacing */
+.badminton-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.badminton-mobile-card .ant-card-body {
+  padding: 12px !important;
+}
+
+/* Card header actions stack on narrow screens */
+.badminton-card-header-mobile .ant-card-head-wrapper {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.badminton-card-header-mobile .ant-card-extra {
+  margin-inline-start: 0 !important;
+  width: 100%;
+}
+
+.badminton-card-header-mobile .ant-card-extra .ant-space {
+  width: 100%;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Collapse panel labels on mobile */
+.badminton-collapse-mobile .ant-collapse-header {
+  align-items: flex-start !important;
+}
+
+.badminton-collapse-mobile .ant-collapse-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.badminton-collapse-mobile .ant-collapse-extra {
+  margin-inline-start: 8px;
+  flex-shrink: 0;
+}
+
+/* Filter toolbar full width on mobile */
+.badminton-filters .ant-input-search,
+.badminton-filters .ant-select,
+.badminton-filters .ant-picker {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (min-width: 640px) {
+  .badminton-filters .ant-input-search {
+    width: 240px !important;
+  }
+
+  .badminton-filters .ant-select {
+    width: auto !important;
+  }
+}

@@ -3,6 +3,7 @@ import { getCurrentDateInJakarta } from './lib/timeUtils';
 import { TasksSection } from '@/app/discipline/components/TasksSection';
 import { CheckInsSection } from '@/app/discipline/components/CheckInsSection';
 import Link from 'next/link';
+import { Card, Row, Col, Button, Space } from 'antd';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,43 +22,42 @@ export default async function DisciplinePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Discipline Tracker</h1>
-          <p className="text-gray-600 mt-2">
-            Tugas harian dan check-in kedisiplinan untuk anak
-          </p>
-          <div className="mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-            <p className="text-blue-800">
-              <strong>Hari ini:</strong> {formatDate(today)}
-            </p>
-          </div>
-        </header>
-
-        <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
-          <TasksSection tasks={tasksResult} />
-          <CheckInsSection checkIns={checkInsResult.checkIns} summary={checkInsResult.summary} />
-        </Suspense>
-
-        {/* Navigation */}
-        <div className="mt-12 border-t pt-8">
-          <div className="grid grid-cols-2 gap-4">
-            <Link
-              href="/discipline/history"
-              className="bg-white p-4 rounded-lg shadow hover:shadow-md transition"
-            >
-              <h3 className="font-semibold text-gray-900">History</h3>
-              <p className="text-sm text-gray-600">Lihat riwayat check-in</p>
-            </Link>
-            <Link
-              href="/discipline/parent"
-              className="bg-white p-4 rounded-lg shadow hover:shadow-md transition"
-            >
-              <h3 className="font-semibold text-gray-900">Untuk Orang Tua</h3>
-              <p className="text-sm text-gray-600">Lihat laporan anak</p>
-            </Link>
-          </div>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="mb-4">
+          <h1 className="text-2xl font-semibold">Discipline Tracker</h1>
+          <p className="text-sm text-gray-600">Tugas harian dan check-in kedisiplinan untuk anak</p>
         </div>
+
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Card type="inner" title={`Hari ini: ${formatDate(today)}`}>
+            <p>Ringkasan kegiatan harian dan status check-in.</p>
+          </Card>
+
+          <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
+            <Card bordered={false}>
+              <TasksSection tasks={tasksResult} />
+            </Card>
+
+            <Card bordered={false}>
+              <CheckInsSection checkIns={checkInsResult.checkIns} summary={checkInsResult.summary} />
+            </Card>
+          </Suspense>
+
+          <div>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Link href="/discipline/history">
+                  <Button block>History - Lihat riwayat check-in</Button>
+                </Link>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Link href="/discipline/parent">
+                  <Button block>Untuk Orang Tua - Lihat laporan anak</Button>
+                </Link>
+              </Col>
+            </Row>
+          </div>
+        </Space>
       </div>
     </div>
   );
