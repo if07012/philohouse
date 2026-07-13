@@ -359,10 +359,41 @@ export async function readRowById(
   const doc = await getGoogleSheet(spreadsheetId);
   const sheet = doc.sheetsByTitle[sheetName];
   if (!sheet) return null;
+  await sheet.loadHeaderRow();
   const rows = await sheet.getRows();
   const row = rows.find((r) => rowMatchesId(r, id));
   if (!row) return null;
   return row.toObject();
+}
+
+type SheetRowWritable = {
+  toObject(): Record<string, unknown>;
+  assign(obj: Record<string, unknown>): void;
+  save(options?: { raw?: boolean }): Promise<void>;
+  delete(): Promise<void>;
+};
+
+function sheetValueToCell(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+function assignRowData(
+  row: SheetRowWritable,
+  headerValues: string[],
+  data: Record<string, unknown>
+): void {
+  const headers = new Set(headerValues.filter(Boolean));
+  const patch: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    if (key === 'id') continue;
+    if (!headers.has(key)) continue;
+    patch[key] = sheetValueToCell(value);
+  }
+
+  if (Object.keys(patch).length === 0) return;
+  row.assign(patch);
 }
 
 export async function updateRowById(
@@ -374,13 +405,14 @@ export async function updateRowById(
   const doc = await getGoogleSheet(spreadsheetId);
   const sheet = doc.sheetsByTitle[sheetName];
   if (!sheet) throw new Error('Sheet not found');
+  await sheet.loadHeaderRow();
   const rows = await sheet.getRows();
-  const row = rows.find((r) => rowMatchesId(r, id));
-  if (!row) throw new Error('Row not found');
-  Object.entries(data).forEach(([k, v]) => {
-    (row as unknown as Record<string, unknown>)[k] = v;
-  });
+  const row = rows.find((r) => rowMatchesId(r, id)) as SheetRowWritable | undefined;
+  if (!row) throw new Error(`Row not found: ${id}`);
+
+  assignRowData(row, sheet.headerValues, data);
   await row.save();
+
   cacheDeleteByPrefix(`read:${spreadsheetId}:`);
   cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);
   cacheDeleteMatching((k) => k.startsWith(`read:${spreadsheetId}:`) && k.endsWith(":promise"));
@@ -398,9 +430,10 @@ export async function deleteRowById(
   const doc = await getGoogleSheet(spreadsheetId);
   const sheet = doc.sheetsByTitle[sheetName];
   if (!sheet) throw new Error('Sheet not found');
+  await sheet.loadHeaderRow();
   const rows = await sheet.getRows();
-  const row = rows.find((r) => rowMatchesId(r, id));
-  if (!row) throw new Error('Row not found');
+  const row = rows.find((r) => rowMatchesId(r, id)) as SheetRowWritable | undefined;
+  if (!row) throw new Error(`Row not found: ${id}`);
   await row.delete();
   cacheDeleteByPrefix(`read:${spreadsheetId}:`);
   cacheDeleteByPrefix(`rows:${spreadsheetId}:${sheetName}`);

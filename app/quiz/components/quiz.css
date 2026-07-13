@@ -1,0 +1,64 @@
+.quiz-module .card-quiz {
+  border-radius: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: white;
+  box-shadow: 0 2px 12px rgba(38, 84, 124, 0.06);
+}
+
+.quiz-module .stat-card {
+  border-radius: 0.75rem;
+  background: var(--color-soft);
+  padding: 1rem 1.25rem;
+}
+
+.quiz-module .progress-bar {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.quiz-module .progress-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+.quiz-module details.quiz-accordion {
+  overflow: hidden;
+}
+
+.quiz-module details.quiz-accordion > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 1rem 1.25rem;
+  user-select: none;
+}
+
+.quiz-module details.quiz-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.quiz-module details.quiz-accordion > summary::marker {
+  content: "";
+}
+
+.quiz-module .quiz-accordion-chevron {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: rgba(0, 0, 0, 0.45);
+  transition: transform 0.2s ease;
+}
+
+.quiz-module details.quiz-accordion[open] .quiz-accordion-chevron {
+  transform: rotate(90deg);
+}
+
+.quiz-module .quiz-accordion-body {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 1rem 1.25rem 1.25rem;
+}
