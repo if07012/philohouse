@@ -72,7 +72,7 @@ export async function POST(request: Request) {
           type: a.type,
           text: a.text,
           imageUrl: a.imageUrl,
-          isCorrect: a.isCorrect === "true" ? true : false,
+          isCorrect: a.isCorrect === "true"|| a.isCorrect === true ? true : false,
         })),
         spreadsheetId
       );
