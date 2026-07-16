@@ -54,7 +54,6 @@ function parseContentType(value: unknown): ContentType {
 }
 
 function boolToSheet(value: boolean): string {
-  console.log("value", value, value ? "TRUE" : "FALSE");
   return value ? "TRUE" : "FALSE";
 }
 

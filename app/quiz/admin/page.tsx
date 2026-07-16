@@ -13,6 +13,7 @@ export default function QuizAdminPage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [quizzes, setQuizzes] = useState<(QuizRow & { questionCount: number })[]>([]);
   const [loading, setLoading] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -96,6 +97,29 @@ export default function QuizAdminPage() {
     }
   };
 
+  const clearCache = async () => {
+    if (
+      !confirm(
+        "Hapus semua cache Google Sheet? Data akan diambil ulang dari spreadsheet pada permintaan berikutnya."
+      )
+    ) {
+      return;
+    }
+    setClearingCache(true);
+    try {
+      const res = await fetch("/api/quiz/cache/clear", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error || "Gagal menghapus cache");
+        return;
+      }
+      alert(`Cache berhasil dihapus (${json.cleared ?? 0} entri).`);
+      loadQuizzes();
+    } finally {
+      setClearingCache(false);
+    }
+  };
+
   if (authenticated === null) {
     return <p className="text-black/60">Memeriksa sesi…</p>;
   }
@@ -150,6 +174,14 @@ export default function QuizAdminPage() {
           >
             Report Semua Peserta
           </Link>
+          <button
+            type="button"
+            onClick={clearCache}
+            disabled={clearingCache}
+            className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 disabled:opacity-60"
+          >
+            {clearingCache ? "Menghapus cache…" : "Hapus Cache Sheet"}
+          </button>
           <button
             type="button"
             onClick={() => setShowCreate(!showCreate)}

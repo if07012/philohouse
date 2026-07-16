@@ -53,7 +53,6 @@ function QuizTakeContent() {
 
         const rawQuestions: PublicQuestion[] = json.questions || [];
         let orderedQuestions = reorderQuestions(rawQuestions, stored.questionOrder);
-        console.log("orderedQuestions", orderedQuestions, "RawQuestions", rawQuestions, "stored.questionOrder", stored.questionOrder);
         const questionOrder = shuffleArray(rawQuestions.map((q) => q.id));
         saveQuizState({
           ...stored,
