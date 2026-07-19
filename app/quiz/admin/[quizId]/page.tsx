@@ -55,6 +55,14 @@ export default function QuizAdminEditPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [savingQuestionId, setSavingQuestionId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  
+  // Copy feature states
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set());
+  const [targetQuizzes, setTargetQuizzes] = useState<{ id: string; title: string }[]>([]);
+  const [targetQuizId, setTargetQuizId] = useState<string>("");
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [allQuizzesLoading, setAllQuizzesLoading] = useState(false);
 
   const [quizForm, setQuizForm] = useState({
     title: "",
@@ -107,6 +115,82 @@ export default function QuizAdminEditPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Load all quizzes for copy target dropdown
+  const loadAllQuizzes = useCallback(async () => {
+    setAllQuizzesLoading(true);
+    try {
+      const res = await fetch("/api/quiz/quiz", { credentials: "include" });
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.quizzes)) {
+        setTargetQuizzes(json.quizzes.filter((q: { id: string }) => q.id !== quizId));
+      }
+    } catch (e) {
+      console.error("Failed to load quizzes:", e);
+    } finally {
+      setAllQuizzesLoading(false);
+    }
+  }, [quizId]);
+
+  const toggleQuestionSelection = (qid: string) => {
+    setSelectedQuestionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(qid)) {
+        next.delete(qid);
+      } else {
+        next.add(qid);
+      }
+      return next;
+    });
+  };
+
+  const selectAllQuestions = () => {
+    setSelectedQuestionIds(new Set(questions.map((q) => q.id)));
+  };
+
+  const deselectAllQuestions = () => {
+    setSelectedQuestionIds(new Set());
+  };
+
+  const openCopyModal = async () => {
+    if (selectedQuestionIds.size === 0) {
+      alert("Pilih minimal satu soal untuk disalin.");
+      return;
+    }
+    await loadAllQuizzes();
+    setShowCopyModal(true);
+  };
+
+  const copyQuestionsToTarget = async () => {
+    if (!targetQuizId) {
+      alert("Pilih quiz tujuan.");
+      return;
+    }
+    setCopying(true);
+    try {
+      const res = await fetch("/api/quiz/question/copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sourceQuizId: quizId,
+          targetQuizId,
+          questionIds: Array.from(selectedQuestionIds),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal menyalin soal");
+      alert(`${json.copied || selectedQuestionIds.size} soal berhasil disalin ke ${json.targetQuizTitle || "quiz tujuan"}.`);
+      setShowCopyModal(false);
+      setTargetQuizId("");
+      setSelectedQuestionIds(new Set());
+      await load({ silent: true });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Gagal menyalin soal");
+    } finally {
+      setCopying(false);
+    }
+  };
 
   const buildQuestionPayload = (q: QuestionWithAnswers) => ({
     type: q.type,
@@ -398,6 +482,41 @@ export default function QuizAdminEditPage() {
         </p>
       </div>
 
+      {/* Copy Questions Toolbar */}
+      <div className="card-quiz mt-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={selectAllQuestions}
+              disabled={questions.length === 0}
+              className="rounded-lg border border-black/15 px-4 py-2 text-sm font-semibold disabled:opacity-50"
+            >
+              Pilih Semua
+            </button>
+            <button
+              type="button"
+              onClick={deselectAllQuestions}
+              disabled={selectedQuestionIds.size === 0}
+              className="rounded-lg border border-black/15 px-4 py-2 text-sm font-semibold disabled:opacity-50"
+            >
+              Batal Pilih
+            </button>
+            <span className="text-sm text-black/60">
+              Terpilih: <strong>{selectedQuestionIds.size}</strong> dari {questions.length} soal
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={openCopyModal}
+            disabled={selectedQuestionIds.size === 0}
+            className="rounded-lg bg-emerald-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50"
+          >
+            Salin Soal Terpilih
+          </button>
+        </div>
+      </div>
+
       <form onSubmit={saveQuizMeta} className="card-quiz mt-4 grid gap-3 p-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">Judul</label>
@@ -570,6 +689,18 @@ export default function QuizAdminEditPage() {
         {questions.map((q) => (
           <details key={q.id} className="quiz-accordion card-quiz">
             <summary className="quiz-accordion-summary">
+              <input
+                type="checkbox"
+                checked={selectedQuestionIds.has(q.id)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  toggleQuestionSelection(q.id);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                className="mr-3 h-4 w-4 accent-[var(--color-dark-blue)]"
+              />
               <span className="quiz-accordion-chevron" aria-hidden="true">
                 ▶
               </span>
@@ -721,6 +852,66 @@ export default function QuizAdminEditPage() {
           </details>
         ))}
       </div>
+
+      {/* Copy Modal */}
+      {showCopyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-[var(--color-dark-blue)]">
+              Salin Soal ke Quiz Lain
+            </h3>
+            <p className="mt-1 text-sm text-black/60">
+              {selectedQuestionIds.size} soal akan disalin
+            </p>
+            
+            <div className="mt-4">
+              <label className="text-sm font-medium">Pilih Quiz Tujuan</label>
+              {allQuizzesLoading ? (
+                <p className="mt-2 text-sm text-black/50">Memuat daftar quiz...</p>
+              ) : targetQuizzes.length === 0 ? (
+                <p className="mt-2 text-sm text-red-600">
+                  Tidak ada quiz lain untuk tujuan penyalinan.
+                </p>
+              ) : (
+                <select
+                  value={targetQuizId}
+                  onChange={(e) => setTargetQuizId(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-black/15 px-3 py-2"
+                >
+                  <option value="">-- Pilih Quiz --</option>
+                  {targetQuizzes.map((q) => (
+                    <option key={q.id} value={q.id}>
+                      {q.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCopyModal(false);
+                  setTargetQuizId("");
+                }}
+                disabled={copying}
+                className="rounded-lg border border-black/15 px-4 py-2 text-sm font-semibold disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={copyQuestionsToTarget}
+                disabled={copying || !targetQuizId || allQuizzesLoading || targetQuizzes.length === 0}
+                className="rounded-lg bg-emerald-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50"
+              >
+                {copying ? "Menyalin..." : "Salin"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
