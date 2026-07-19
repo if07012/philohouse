@@ -693,14 +693,11 @@ export default function QuizAdminEditPage() {
                 type="checkbox"
                 checked={selectedQuestionIds.has(q.id)}
                 onChange={(e) => {
-                  e.preventDefault();
                   e.stopPropagation();
                   toggleQuestionSelection(q.id);
                 }}
                 onClick={(e) => {
-                  e.preventDefault();
                   e.stopPropagation();
-                  toggleQuestionSelection(q.id);
                 }}
                 className="mr-3 h-4 w-4 accent-[var(--color-dark-blue)]"
               />
