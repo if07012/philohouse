@@ -8,6 +8,19 @@ import type {
 } from "./types";
 import { getPointsPerCorrect } from "./env";
 
+function resolveSelectedAnswer(
+  qAnswers: AnswerRow[],
+  userValue: string
+): AnswerRow | undefined {
+  const value = userValue.trim();
+  if (!value) return undefined;
+
+  const byId = qAnswers.find((a) => a.id === value);
+  if (byId) return byId;
+
+  return qAnswers.find((a) => a.letter.toUpperCase() === value.toUpperCase());
+}
+
 export function scoreQuizAttempt(params: {
   questions: QuestionRow[];
   answers: AnswerRow[];
@@ -34,17 +47,13 @@ export function scoreQuizAttempt(params: {
   for (const q of params.questions) {
     const qAnswers = answersByQuestion.get(q.id) ?? [];
     const correctAnswer = qAnswers.find((a) => a.isCorrect);
-    const selectedLetter = (params.userAnswers[q.id] ?? "").trim().toUpperCase();
-    const selectedAnswer = qAnswers.find(
-      (a) => a.letter.toUpperCase() === selectedLetter
-    );
+    const userValue = (params.userAnswers[q.id] ?? "").trim();
+    const selectedAnswer = resolveSelectedAnswer(qAnswers, userValue);
+    const selectedLetter = selectedAnswer?.letter.toUpperCase() ?? "";
     const points = q.score > 0 ? q.score : defaultPoints;
-    const isCorrect =
-      Boolean(selectedLetter) &&
-      Boolean(correctAnswer) &&
-      selectedLetter === correctAnswer!.letter.toUpperCase();
+    const isCorrect = Boolean(selectedAnswer?.isCorrect);
 
-    if (!selectedLetter) {
+    if (!userValue) {
       skipped += 1;
     } else if (isCorrect) {
       correct += 1;

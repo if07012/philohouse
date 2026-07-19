@@ -20,7 +20,7 @@ export function getGroqApiKey(): string {
 }
 
 export function getGroqModel(): string {
-  return process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
+  return process.env.GROQ_MODEL || "openai/gpt-oss-20b";
 }
 
 export type ExamLlmProvider = "groq" | "ollama";

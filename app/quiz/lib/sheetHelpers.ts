@@ -227,33 +227,82 @@ export async function listAllAnswers(spreadsheetId?: string): Promise<AnswerRow[
   return rows.map(parseAnswerRow).filter((a) => a.id);
 }
 
-export function toPublicQuestions(
-  questions: QuestionRow[],
-  answers: AnswerRow[]
-): PublicQuestion[] {
-  const byQuestion = new Map<string, PublicAnswer[]>();
+const DISPLAY_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function shuffleArrayInPlace<T>(items: T[], random: () => number): void {
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+}
+
+function createSeededRandom(seed: string): () => number {
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return () => {
+    hash += 0x6d2b79f5;
+    let t = hash;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function groupAnswersByQuestion(answers: AnswerRow[]): Map<string, AnswerRow[]> {
+  const byQuestion = new Map<string, AnswerRow[]>();
   for (const a of answers) {
     const list = byQuestion.get(a.questionId) ?? [];
-    list.push({
+    list.push(a);
+    byQuestion.set(a.questionId, list);
+  }
+  return byQuestion;
+}
+
+export function toPublicQuestions(
+  questions: QuestionRow[],
+  answers: AnswerRow[],
+  shuffleSeed?: string | null
+): PublicQuestion[] {
+  const byQuestion = groupAnswersByQuestion(answers);
+
+  return questions.map((q) => {
+    const qAnswers = [...(byQuestion.get(q.id) ?? [])].sort((a, b) =>
+      a.letter.localeCompare(b.letter)
+    );
+
+    if (shuffleSeed !== null && qAnswers.length > 1) {
+      shuffleArrayInPlace(
+        qAnswers,
+        shuffleSeed
+          ? createSeededRandom(`${shuffleSeed}:${q.id}`)
+          : Math.random
+      );
+    }
+
+    const publicAnswers: PublicAnswer[] = qAnswers.map((a, idx) => ({
       id: a.id,
-      letter: a.letter,
+      letter:
+        shuffleSeed === null
+          ? a.letter
+          : DISPLAY_LETTERS[idx] ?? String(idx + 1),
       type: a.type,
       text: a.text,
       imageUrl: a.imageUrl,
-    });
-    byQuestion.set(a.questionId, list);
-  }
-  return questions.map((q) => ({
-    id: q.id,
-    orderIndex: q.orderIndex,
-    type: q.type,
-    question: q.question,
-    imageUrl: q.imageUrl,
-    score: q.score,
-    answers: (byQuestion.get(q.id) ?? []).sort((a, b) =>
-      a.letter.localeCompare(b.letter)
-    ),
-  }));
+    }));
+
+    return {
+      id: q.id,
+      orderIndex: q.orderIndex,
+      type: q.type,
+      question: q.question,
+      imageUrl: q.imageUrl,
+      score: q.score,
+      answers: publicAnswers,
+    };
+  });
 }
 
 export async function listQuizItemsForUser(
@@ -694,7 +743,8 @@ export async function getAdminReport(spreadsheetId?: string): Promise<DashboardS
 export async function loadQuizSession(
   quizId: string,
   includeAnswerKey = false,
-  spreadsheetId?: string
+  spreadsheetId?: string,
+  shuffleSeed?: string
 ): Promise<{
   quiz: QuizRow;
   questions: PublicQuestion[];
@@ -709,7 +759,11 @@ export async function loadQuizSession(
     questions.map((q) => q.id),
     id
   );
-  const publicQuestions = toPublicQuestions(questions, answers);
+  const publicQuestions = toPublicQuestions(
+    questions,
+    answers,
+    includeAnswerKey ? null : shuffleSeed
+  );
 
   const result: {
     quiz: QuizRow;

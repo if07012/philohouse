@@ -47,3 +47,42 @@ export async function groqChatJson<T>(params: {
     throw new Error("Groq returned non-JSON content");
   }
 }
+
+export async function groqChatText(params: {
+  system: string;
+  user: string;
+  maxTokens?: number;
+  temperature?: number;
+}): Promise<string> {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getGroqApiKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: getGroqModel(),
+      messages: [
+        { role: "system", content: params.system },
+        { role: "user", content: params.user },
+      ] satisfies GroqMessage[],
+      temperature: params.temperature ?? 0.4,
+      max_tokens: params.maxTokens ?? 2000,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Groq API error ${res.status}: ${text}`);
+  }
+
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const raw = data.choices?.[0]?.message?.content?.trim();
+  if (!raw) {
+    throw new Error("Groq returned empty content");
+  }
+
+  return raw;
+}

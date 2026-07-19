@@ -34,12 +34,6 @@ function QuizTakeContent() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/quiz/session/${encodeURIComponent(quizId)}`);
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || "Gagal memuat soal");
-
-        if (cancelled) return;
-
         const stored = loadQuizState(quizId);
         if (stored?.submitted) {
           router.replace(`/quiz/${quizId}/result`);
@@ -51,14 +45,24 @@ function QuizTakeContent() {
           return;
         }
 
+        const res = await fetch(
+          `/api/quiz/session/${encodeURIComponent(quizId)}?attemptId=${encodeURIComponent(stored.attemptId)}`
+        );
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Gagal memuat soal");
+
+        if (cancelled) return;
+
         const rawQuestions: PublicQuestion[] = json.questions || [];
-        let orderedQuestions = reorderQuestions(rawQuestions, stored.questionOrder);
-        const questionOrder = shuffleArray(rawQuestions.map((q) => q.id));
-        saveQuizState({
-          ...stored,
-          questionOrder,
-        });
-        orderedQuestions = reorderQuestions(rawQuestions, questionOrder);
+        let questionOrder = stored.questionOrder;
+        if (!questionOrder || questionOrder.length !== rawQuestions.length) {
+          questionOrder = shuffleArray(rawQuestions.map((q) => q.id));
+          saveQuizState({
+            ...stored,
+            questionOrder,
+          });
+        }
+        const orderedQuestions = reorderQuestions(rawQuestions, questionOrder);
 
         setQuiz(json.quiz);
         setQuestions(orderedQuestions);
@@ -146,9 +150,9 @@ function QuizTakeContent() {
     return Math.round(((currentIndex + 1) / total) * 100);
   }, [currentIndex, total]);
 
-  const selectAnswer = (letter: string) => {
+  const selectAnswer = (answerId: string) => {
     if (!q || submitting) return;
-    const next = { ...answers, [q.id]: letter };
+    const next = { ...answers, [q.id]: answerId };
     setAnswers(next);
     persist({ answers: next });
   };
@@ -222,8 +226,8 @@ function QuizTakeContent() {
             <AnswerOption
               key={a.id}
               answer={a}
-              selected={selected === a.letter}
-              onSelect={() => selectAnswer(a.letter)}
+              selected={selected === a.id}
+              onSelect={() => selectAnswer(a.id)}
               disabled={submitting}
             />
           ))}

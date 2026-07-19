@@ -27,7 +27,14 @@ export async function GET(request: Request, ctx: RouteCtx) {
       admin = token ? verifyQuizAdminSession(token) !== null : false;
     }
 
-    const session = await loadQuizSession(quizId, admin, spreadsheetId);
+    const shuffleSeed =
+      admin || !attemptId ? undefined : attemptId;
+    const session = await loadQuizSession(
+      quizId,
+      admin,
+      spreadsheetId,
+      shuffleSeed
+    );
 
     let attempt = null;
     let userAnswers: Awaited<ReturnType<typeof listUserAnswersForAttempt>> = [];
